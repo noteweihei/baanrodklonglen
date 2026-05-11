@@ -1,0 +1,228 @@
+/* =========================================
+   🎨 main.css - Modern UI สำหรับหน้าร้าน (index.html)
+   ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --brand-color: #1a237e;
+    --brand-color-hover: #0d47a1;
+    --accent-color: #ffca28;
+    --bg-light: #f4f7fb;
+    --card-bg: #ffffff;
+    --text-main: #2d3748;
+}
+
+body {
+    background-color: var(--bg-light);
+    font-family: "Kanit", sans-serif;
+    overflow-x: hidden;
+    -webkit-user-select: none;
+    user-select: none;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    color: var(--text-main);
+}
+
+img { -webkit-user-drag: none; pointer-events: auto; }
+main { flex: 1; }
+button, a { cursor: pointer; }
+
+/* --- 🌟 Navbar (Modern & Clean) --- */
+.navbar {
+    background: rgba(26, 35, 126, 0.98) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 15px 0; /* เพิ่มพื้นที่แนวตั้งให้โปร่งขึ้น */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+.navbar-brand { 
+    font-weight: 800; 
+    letter-spacing: 0.5px; 
+    font-size: 1.4rem; 
+    cursor: pointer; 
+    color: #ffffff !important;
+}
+
+/* แต่งปุ่มเมนูให้ดูมินิมอล */
+.nav-link {
+    font-weight: 500; 
+    color: rgba(255, 255, 255, 0.8) !important;
+    padding: 8px 14px !important; 
+    font-size: 0.95rem;
+    transition: 0.3s all ease; 
+    border-radius: 8px;
+    white-space: nowrap; /* ป้องกันข้อความตกบรรทัด */
+}
+
+/* Hover Effect แบบนุ่มนวล */
+.nav-link:hover { 
+    color: var(--accent-color) !important; 
+    background: rgba(255,255,255,0.1); 
+    transform: translateY(-2px); 
+}
+
+/* Dropdown สไตล์ใหม่ */
+.dropdown-menu { 
+    border-radius: 16px; 
+    padding: 10px; 
+    margin-top: 15px; 
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2); 
+    border: 1px solid rgba(0,0,0,0.05);
+    background: #ffffff;
+}
+.dropdown-item { 
+    border-radius: 8px; 
+    padding: 10px 15px; 
+    font-size: 0.95rem; 
+    transition: 0.2s; 
+    font-weight: 500; 
+}
+.dropdown-item:hover { 
+    background-color: #f8fafc; 
+    color: var(--brand-color); 
+    transform: translateX(4px); /* เลื่อนขวานิดนึงตอนชี้ */
+}
+
+/* --- 🪙 Point Badge (ป้ายแสดงแต้ม) --- */
+.pts-badge-container {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 6px 16px; 
+    border-radius: 50px;
+    display: flex; 
+    align-items: center; 
+    gap: 8px;
+    color: var(--accent-color); 
+    font-weight: 700; 
+    font-size: 0.95rem;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+.sync-btn { color: rgba(255,255,255,0.6); cursor: pointer; transition: 0.4s; }
+.sync-btn:hover { color: var(--accent-color); transform: rotate(180deg); }
+
+/* --- 🛍️ Product Cards --- */
+.product-card {
+    background: var(--card-bg); border: none; border-radius: 20px;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+.product-card:hover { transform: translateY(-8px); box-shadow: 0 15px 30px rgba(0,0,0,0.12); }
+.product-card img { cursor: zoom-in; transition: 0.4s ease; }
+.product-card img:hover { transform: scale(1.05); }
+.btn-primary { background: linear-gradient(135deg, var(--brand-color), #3949ab); border: none; transition: 0.3s; }
+.btn-primary:hover { background: linear-gradient(135deg, #3949ab, var(--brand-color-hover)); box-shadow: 0 5px 15px rgba(26, 35, 126, 0.4); transform: translateY(-2px); }
+
+/* --- 🔔 Notification Bell --- */
+.noti-bell { position: relative; cursor: pointer; font-size: 1.2rem; }
+.noti-badge { position: absolute; top: -2px; right: -8px; background: #ff4757; color: white; border-radius: 50%; padding: 3px 6px; font-size: 0.65rem; font-weight: bold; border: 2px solid var(--brand-color); }
+
+/* --- 🎲 Gacha 3D System --- */
+.gacha-board { perspective: 1000px; display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; padding: 20px; max-width: 600px; margin: 0 auto; }
+.gacha-card { width: 100px; height: 140px; cursor: pointer; position: relative; }
+.gacha-card-inner { width: 100%; height: 100%; transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); transform-style: preserve-3d; position: relative; box-shadow: 0 5px 15px rgba(0,0,0,0.3); border-radius: 12px; }
+.gacha-card.flipped .gacha-card-inner { transform: rotateY(180deg) scale(1.15); box-shadow: 0 15px 35px rgba(255, 202, 40, 0.6); z-index: 10; }
+.gacha-card.disabled { pointer-events: none; opacity: 0.4; filter: grayscale(80%); transition: 0.5s; }
+.card-face { width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; position: absolute; border-radius: 12px; overflow: hidden; }
+.card-front { background: linear-gradient(135deg, var(--brand-color), #3949ab); display: flex; align-items: center; justify-content: center; border: 3px solid var(--accent-color); background-image: repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 10px, transparent 10px, transparent 20px); }
+.card-number { font-size: 3.5rem; font-weight: bold; color: white; text-shadow: 2px 2px 0px #e6b800; }
+.card-back { background: #fff; transform: rotateY(180deg); display: flex; flex-direction: column; align-items: center; justify-content: center; border: 3px solid #00e676; }
+.card-back img { width: 100%; height: 80px; object-fit: contain; padding: 5px; border-bottom: 2px solid #f1f5f9; }
+.card-back .prize-name { font-size: 0.7rem; font-weight: bold; text-align: center; padding: 5px; color: var(--brand-color); line-height: 1.2; }
+
+/* --- 📱 Floating Mobile Bottom Nav (App-Like) --- */
+.mobile-bottom-nav { display: none; }
+
+@media (max-width: 991.98px) {
+    body { padding-bottom: 100px; } 
+    .navbar-toggler, #navbarNav { display: none !important; }
+    
+    /* กรอบเมนูแบบลอย (Floating Dock) */
+    .mobile-bottom-nav {
+        display: flex; position: fixed; bottom: 20px; left: 15px; right: 15px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        z-index: 1050; justify-content: space-around;
+        padding: 10px 5px; border-radius: 30px;
+    }
+    .mobile-nav-item {
+        display: flex; flex-direction: column; align-items: center;
+        color: #94a3b8; text-decoration: none; font-size: 0.65rem; font-weight: 700;
+        width: 20%; cursor: pointer; transition: 0.3s;
+    }
+    .mobile-nav-item i { font-size: 1.3rem; margin-bottom: 4px; transition: 0.3s; }
+    
+    /* เมื่อเมนูนั้นถูกเลือก (Active) */
+    .mobile-nav-item.active { color: var(--brand-color); }
+    .mobile-nav-item.active i { transform: translateY(-3px) scale(1.15); color: var(--brand-color); }
+    
+    /* ปุ่มร้านค้าแบบวงกลมเด้งออกขอบ */
+    .mobile-nav-item.special-btn i {
+        background: linear-gradient(135deg, #10b981, #047857);
+        color: white; width: 55px; height: 55px;
+        display: flex; align-items: center; justify-content: center;
+        border-radius: 50%; box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+        margin-top: -30px; font-size: 1.5rem; border: 4px solid #f4f7fb;
+    }
+    /* ดันแชทบอทให้สูงขึ้นไม่ให้บังเมนู */
+    .fixed-bottom-right { bottom: 100px !important; right: 15px !important; }
+}
+
+@media (max-width: 390px) {
+    .navbar-brand { font-size: 1rem !important; }
+    .navbar-brand i { font-size: 1rem !important; }
+}
+
+/* =========================================
+   💬 AI Chat Assistant Styles 
+   ========================================= */
+.fixed-bottom-right { position: fixed; bottom: 25px; right: 25px; z-index: 9999; }
+
+.chat-fab { width: 65px; height: 65px; animation: bounceFloat 3s infinite ease-in-out; }
+@keyframes bounceFloat { 
+    0%, 100% { transform: translateY(0); box-shadow: 0 5px 15px rgba(26,35,126,0.3); } 
+    50% { transform: translateY(-10px); box-shadow: 0 15px 25px rgba(26,35,126,0.4); } 
+}
+
+.chat-box-ui {
+    width: 360px; max-width: 90vw; position: absolute; bottom: 80px; right: 0;
+    border-radius: 20px; overflow: hidden; display: flex; flex-direction: column;
+    border: none; z-index: 10000;
+}
+
+.chat-messages-area { height: 380px; overflow-y: auto; background-color: #f8fafc; scroll-behavior: smooth; }
+.chat-messages-area::-webkit-scrollbar { width: 5px; }
+.chat-messages-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+.chat-bubble {
+    max-width: 85%; padding: 12px 16px; border-radius: 18px;
+    font-size: 0.9rem; line-height: 1.5; margin-bottom: 12px;
+    word-wrap: break-word; position: relative;
+}
+.chat-ai { 
+    background-color: #ffffff; color: #334155; border: 1px solid #e2e8f0;
+    border-bottom-left-radius: 4px; align-self: flex-start; box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+.chat-user { 
+    background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;
+    border-bottom-right-radius: 4px; align-self: flex-end; box-shadow: 0 4px 10px rgba(37,99,235,0.2);
+}
+
+.typing-indicator { display: flex; gap: 4px; padding: 5px 10px; }
+.typing-dot { width: 6px; height: 6px; background: #94a3b8; border-radius: 50%; animation: typing 1.4s infinite; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+/* --- 🌈 Vibrant UI Enhancements --- */
+.btn-success { background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%) !important; border: none !important; box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4); }
+.btn-warning { background: linear-gradient(135deg, #fccb90 0%, #d57eeb 100%) !important; border: none !important; box-shadow: 0 4px 15px rgba(213, 126, 235, 0.4); }
+.btn-danger { background: linear-gradient(135deg, #ff0844 0%, #ffb199 100%) !important; border: none !important; box-shadow: 0 4px 15px rgba(255, 8, 68, 0.4); }
+.btn-info { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; border: none !important; box-shadow: 0 4px 15px rgba(118, 75, 162, 0.4); }
+.btn:hover { transform: translateY(-3px) scale(1.02); filter: brightness(1.1); transition: all 0.3s ease; }
+
+footer { background: var(--card-bg); color: #64748b; padding: 25px 0; text-align: center; font-size: 0.85rem; margin-top: 50px; border-top: 1px solid #e2e8f0; }
