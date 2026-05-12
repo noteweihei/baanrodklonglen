@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Admin Dashboard - บ้านรถของเล่น</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/admin.css">
+</head>
+<body>
+
+    <div id="mobileBackdrop" class="mobile-backdrop" onclick="closeMobileMenu()"></div>
+
+    <div class="sidebar" id="sidebarMenu">
+        <div class="sidebar-header d-flex justify-content-between align-items-center">
+            <div><h4 class="fw-bold text-white mb-0"><i class="fas fa-rocket text-warning me-2"></i> Admin Panel</h4><small class="text-white-50">บ้านรถของเล่น</small></div>
+            <button class="btn btn-link text-white d-lg-none p-0 border-0 fs-4" onclick="closeMobileMenu()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sidebar-menu" id="adminTabs">
+            <button class="nav-link active" data-bs-target="#ordersTab" onclick="loadData()"><i class="fas fa-check-circle text-success"></i> อนุมัติแต้ม</button>
+            <button class="nav-link" data-bs-target="#redemptionsTab" onclick="loadData()"><i class="fas fa-shipping-fast text-warning"></i> จัดส่งของ</button>
+            <button class="nav-link" data-bs-target="#shopOrdersTab" onclick="loadShopOrders()"><i class="fas fa-shopping-basket text-primary"></i> ออเดอร์ร้านค้า</button>
+            <button class="nav-link" data-bs-target="#trackingTab"><i class="fas fa-box-open text-info"></i> แจ้งเลขพัสดุ</button>
+            <button class="nav-link" data-bs-target="#historyTab" onclick="loadData()"><i class="fas fa-history text-secondary"></i> ประวัติงาน</button>
+            <hr class="border-secondary my-3 opacity-25">
+            <button class="nav-link" data-bs-target="#usersTab" onclick="loadUsers()"><i class="fas fa-users text-primary"></i> สมาชิก</button>
+            <button class="nav-link" data-bs-target="#productsTab" onclick="loadProducts()"><i class="fas fa-cube text-success"></i> สินค้าปกติ</button>
+            <button class="nav-link" data-bs-target="#gachaTab" onclick="loadGacha()"><i class="fas fa-gem text-danger"></i> การ์ดสุ่ม (Gacha)</button>
+            <hr class="border-secondary my-3 opacity-25">
+            <button class="nav-link" data-bs-target="#settingsTab" onclick="loadSettings()"><i class="fas fa-cog text-light"></i> ตั้งค่าระบบ</button>
+            <button class="nav-link" data-bs-target="#logsTab" onclick="loadLogs()"><i class="fas fa-shield-alt text-danger"></i> Security Logs</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <header class="topbar">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-light d-lg-none me-3 border-0 shadow-sm" onclick="openMobileMenu()"><i class="fas fa-bars"></i></button>
+                <div class="search-bar">
+                    <i class="fas fa-search text-muted"></i>
+                    <input type="search" id="globalSearch" placeholder="ค้นหาข้อมูล..." onkeyup="searchTables()">
+                </div>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                <div class="dropdown">
+                    <button class="btn btn-light rounded-circle shadow-sm p-0 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" data-bs-toggle="dropdown" title="เปลี่ยนสีธีม">
+                        <i class="fas fa-palette text-primary"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 mt-2 p-3 text-center" style="min-width: 220px; z-index: 1050;">
+                        <h6 class="fw-bold mb-3 text-muted small">เลือกสีธีม</h6>
+                        <div class="d-flex justify-content-center gap-2 flex-wrap">
+                            <div class="theme-btn border border-2 border-white" style="background: #4f46e5;" onclick="setTheme('default')"></div>
+                            <div class="theme-btn border border-2 border-white" style="background: #e11d48;" onclick="setTheme('crimson')"></div>
+                            <div class="theme-btn border border-2 border-white" style="background: #059669;" onclick="setTheme('emerald')"></div>
+                            <div class="theme-btn border border-2 border-white" style="background: #ea580c;" onclick="setTheme('orange')"></div>
+                            <div class="theme-btn border border-2 border-white" style="background: #9333ea;" onclick="setTheme('purple')"></div>
+                            <div class="theme-btn border border-2 border-white" style="background: linear-gradient(135deg, #111827, #374151);" onclick="setTheme('darkmode')"></div>
+                        </div>
+                    </ul>
+                </div>
+
+                <a href="shop-admin.html" class="btn btn-light btn-sm fw-bold text-primary rounded-pill px-3 shadow-sm d-none d-md-inline-flex align-items-center"><i class="fas fa-store me-2"></i>ร้านค้า AI</a>
+                <a href="index.html" class="btn btn-light btn-sm fw-bold rounded-pill px-3 shadow-sm d-none d-md-inline-flex align-items-center"><i class="fas fa-home me-2"></i>หน้าร้าน</a>
+                
+                <div class="dropdown">
+                    <button class="btn btn-light rounded-circle shadow-sm p-0" style="width: 40px; height: 40px;" data-bs-toggle="dropdown"><i class="fas fa-user-shield text-primary"></i></button>
+                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg rounded-4 mt-2">
+                        <li><a class="dropdown-item py-2" href="shop-admin.html"><i class="fas fa-store me-2 text-primary"></i> จัดการร้านค้า AI</a></li>
+                        <li><a class="dropdown-item py-2" href="index.html"><i class="fas fa-home me-2 text-success"></i> กลับหน้าร้าน</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item py-2 text-danger fw-bold" onclick="logoutAdmin()"><i class="fas fa-sign-out-alt me-2"></i> ออกระบบ</button></li>
+                    </ul>
+                </div>
+            </div>
+        </header>
+
+        <main class="container-fluid p-4">
+            <div class="tab-content">
+                
+                <div class="tab-pane fade show active" id="ordersTab">
+                    <div class="card"><div class="card-header"><span style="color: var(--primary-color)"><i class="fas fa-clock me-2"></i> รายการรออนุมัติแต้ม</span></div>
+                        <div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>วันที่แจ้ง</th><th>Order ID</th><th>ลูกค้า</th><th>ช่องทาง</th><th>ยอดโอน</th><th>แต้มที่ได้</th><th class="text-end">จัดการ</th></tr></thead><tbody id="pendingOrdersTable"></tbody></table><div id="page-pendingOrdersTable"></div></div></div>
+                </div>
+
+                <!-- 🛒 ส่วนแสดงออเดอร์ร้านค้า (Shop Orders) -->
+                <div class="tab-pane fade" id="shopOrdersTab">
+                    <div class="card border-primary border-top border-4">
+                        <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                            <span class="text-primary fw-bold"><i class="fas fa-shopping-basket me-2"></i> ออเดอร์สั่งซื้อจากหน้าร้านค้า</span>
+                            <div>
+                                <!-- 💡 เพิ่มปุ่มสร้างออเดอร์ตรงนี้ค่ะ -->
+                                <button class="btn btn-info text-white btn-sm me-2 fw-bold shadow-sm" onclick="openManualOrderModal()">
+                                    <i class="fas fa-plus me-1"></i> สร้างออเดอร์ (แมนนวล)
+                                </button>
+                                <button class="btn btn-outline-primary btn-sm me-2 fw-bold shadow-sm" onclick="printShopLabels()">
+                                    <i class="fas fa-print me-1"></i> พิมพ์ใบปะหน้า (เทพๆ)
+                                </button>
+                                <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="bulkApproveShopShipping()">
+                                    <i class="fas fa-truck me-1"></i> อัปเดตเป็นจัดส่งแล้ว
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body table-responsive">
+                            <table class="table align-middle table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th width="40"><input type="checkbox" onclick="document.querySelectorAll('.chk-shop').forEach((cb) => (cb.checked = this.checked))" /></th>
+                                        <th width="150">เวลา / รหัสบิล</th>
+                                        <th>ลูกค้า / ที่อยู่จัดส่ง</th>
+                                        <th width="250">รายการสินค้า (ย่อ)</th>
+                                        <th width="100">ยอดรวม</th>
+                                        <th width="100" class="text-center">หลักฐาน</th>
+                                        <th width="120" class="text-center">จัดการ/สถานะ</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shopOrdersTableBody"></tbody>
+                            </table>
+                            <div id="page-shopOrdersTableBody"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="redemptionsTab">
+                    <div class="card border-warning border-top border-4"><div class="card-header"><span class="text-warning"><i class="fas fa-shipping-fast me-2"></i> รอจัดส่ง</span><div><button class="btn btn-light btn-sm me-2 fw-bold" onclick="printSelectedLabels()">พิมพ์ใบปะหน้า</button><button class="btn btn-success btn-sm fw-bold" onclick="bulkApproveShipping()">อนุมัติจัดส่งแล้ว</button></div></div>
+                        <div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th><input type="checkbox" onclick="document.querySelectorAll('.chk-redeem').forEach((cb) => (cb.checked = this.checked))" /></th><th>วันที่แลก</th><th>ลูกค้า</th><th>ที่อยู่จัดส่ง</th><th>สินค้าที่แลก</th><th class="text-end">จัดการ</th></tr></thead><tbody id="pendingRedeemsTable"></tbody></table><div id="page-pendingRedeemsTable"></div></div></div>
+                </div>
+
+                <div class="tab-pane fade" id="trackingTab">
+                    <div class="card border-info border-top border-4">
+                        <div class="card-header"><span class="text-info"><i class="fas fa-magic me-2"></i> ระบบแยกเลขพัสดุอัจฉริยะ (AI-Ready)</span></div>
+                        <div class="card-body p-4">
+                            <div class="row mb-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold text-info"><i class="fas fa-camera me-1"></i> สแกนจากรูปภาพใบเสร็จด้วย AI</label>
+                                    <input type="file" id="receiptImgInput" class="form-control border-info shadow-sm" accept="image/*" onchange="scanReceiptImage(event)">
+                                    <small class="text-muted mt-1 d-block">* อัปโหลดภาพสลิปส่งของ หรือแคปหน้าจอระบบขนส่ง AI จะดึงข้อมูลให้อัตโนมัติ</small>
+                                </div>
+                            </div>
+
+                            <div class="text-center my-3"><span class="badge bg-secondary rounded-pill px-3">หรือวางข้อความปกติ</span></div>
+
+                            <textarea id="rawTrackingInput" class="form-control mb-3 shadow-sm border-0 bg-light" rows="4" placeholder="วางข้อมูลข้อความ ปณ. ที่นี่..."></textarea>
+                            <div class="d-flex justify-content-end gap-2 mb-4">
+                                <button class="btn btn-light rounded-pill px-4 fw-bold shadow-sm" onclick="document.getElementById('rawTrackingInput').value=''; document.getElementById('receiptImgInput').value='';">ล้างค่า</button>
+                                <button class="btn btn-info text-white rounded-pill px-5 fw-bold shadow-sm" onclick="parseTrackingText()"><i class="fas fa-cogs me-2"></i> ประมวลผลจากข้อความ</button>
+                            </div>
+                            <div id="trackingResultArea" class="d-none border-top pt-4">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 class="fw-bold mb-0">📋 สกัดข้อมูลสำเร็จ (<span id="trackCount" class="text-info">0</span> รายการ)</h6>
+                                    <button class="btn btn-warning btn-sm fw-bold rounded-pill px-4 shadow-sm" onclick="copyTrackingToClipboard()"><i class="fas fa-copy me-2"></i> คัดลอกส่งไลน์</button>
+                                </div>
+                                <div class="table-responsive border rounded-4 border-light">
+                                    <table class="table mb-0 align-middle">
+                                        <thead><tr><th width="50">#</th><th>ชื่อผู้รับ</th><th>เลขพัสดุ (EMS)</th><th>จังหวัด (Zip)</th><th width="80" class="text-center">ลบ</th></tr></thead>
+                                        <tbody id="trackTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="historyTab">
+                    <div class="row"><div class="col-xl-6"><div class="card"><div class="card-header"><span class="text-secondary"><i class="fas fa-history me-2"></i> ประวัติเติมแต้ม</span></div><div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>วันที่</th><th>ID/ช่องทาง</th><th>ลูกค้า</th><th>ยอด/แต้ม</th><th>สถานะ</th></tr></thead><tbody id="historyOrdersTable"></tbody></table><div id="page-historyOrdersTable"></div></div></div></div>
+                    <div class="col-xl-6"><div class="card"><div class="card-header"><span class="text-secondary"><i class="fas fa-gift me-2"></i> ประวัติแลกของ</span></div><div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>วันที่</th><th>สินค้า</th><th>ลูกค้า</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead><tbody id="historyRedeemsTable"></tbody></table><div id="page-historyRedeemsTable"></div></div></div></div></div>
+                </div>
+
+                <div class="tab-pane fade" id="usersTab">
+                    <div class="card"><div class="card-header"><span class="text-primary"><i class="fas fa-users me-2"></i> รายชื่อสมาชิก</span></div>
+                        <div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>เบอร์โทร / IP</th><th>ชื่อ-นามสกุล</th><th>ที่อยู่</th><th>รหัส ปณ.</th><th>แต้มคงเหลือ</th><th>สถานะ</th><th class="text-end">จัดการ</th></tr></thead><tbody id="userTable"></tbody></table><div id="page-userTable"></div></div></div>
+                </div>
+
+                <div class="tab-pane fade" id="productsTab">
+                    <div class="card border-success border-top border-4"><div class="card-header"><span class="text-success"><i class="fas fa-cube me-2"></i> คลังสินค้าปกติ</span><button class="btn btn-success btn-sm fw-bold rounded-pill" onclick="openProductModal()"><i class="fas fa-plus me-1"></i> เพิ่มสินค้า</button></div>
+                        <div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>รูป</th><th>ชื่อสินค้า</th><th>ใช้แต้ม</th><th>สต็อกคงเหลือ</th><th class="text-end">จัดการ</th></tr></thead><tbody id="productTable"></tbody></table><div id="page-productTable"></div></div></div>
+                </div>
+
+                <div class="tab-pane fade" id="gachaTab">
+                    <div class="card border-danger border-top border-4"><div class="card-header"><span class="text-danger"><i class="fas fa-gem me-2"></i> ตู้การ์ดสุ่ม (Gacha)</span><button class="btn btn-danger btn-sm fw-bold rounded-pill" onclick="openGachaModal()"><i class="fas fa-plus me-1"></i> เพิ่มการ์ดรางวัล</button></div>
+                        <div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>รูป</th><th>ชื่อรางวัล</th><th>หมวดหมู่</th><th>ประเภท</th><th>อ้างอิง/โบนัส</th><th>สต็อก</th><th>โอกาส (%)</th><th class="text-end">จัดการ</th></tr></thead><tbody id="gachaTable"></tbody></table><div id="page-gachaTable"></div></div></div>
+                </div>
+
+                <!-- ⚙️ หมวดตั้งค่าระบบแบบครอบจักรวาล -->
+                <div class="tab-pane fade" id="settingsTab">
+                    <div class="card shadow-lg border-0">
+                        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-cogs me-2 text-info"></i> ศูนย์ควบคุมระบบร้านค้า (Dynamic Settings)</span>
+                            <button class="btn btn-sm btn-outline-info rounded-pill" onclick="loadSettings()"><i class="fas fa-sync-alt"></i> รีโหลดค่าล่าสุด</button>
+                        </div>
+                        <div class="card-body p-4">
+                            
+                            <ul class="nav nav-pills mb-4 pb-2 border-bottom" id="settingTabs">
+                                <li class="nav-item"><a class="nav-link active fw-bold px-4" data-bs-toggle="pill" href="#setPts"><i class="fas fa-coins text-warning me-1"></i> แต้ม & กาชา</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setShop"><i class="fas fa-truck text-success me-1"></i> ค่าจัดส่ง</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setContact"><i class="fas fa-headset text-primary me-1"></i> ช่องทางติดต่อ</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setAi"><i class="fas fa-robot text-danger me-1"></i> AI & หมวดหมู่</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setTracking"><i class="fas fa-shipping-fast text-info me-1"></i> ข้อความแจ้งเลข</a></li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="setPts">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-muted small">ฐานยอดสั่งซื้อขั้นต่ำ (บาท)</label>
+                                            <input type="number" id="setBase" class="form-control form-control-lg bg-light border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-muted small">จะได้รับคะแนน (แต้ม)</label>
+                                            <input type="number" id="setRate" class="form-control form-control-lg bg-light border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-danger small">ค่าสุ่มกาชา 1 ครั้ง (แต้ม)</label>
+                                            <input type="number" id="setGacha" class="form-control form-control-lg border-danger text-danger fw-bold shadow-sm">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('points')">
+                                        <i class="fas fa-save me-1"></i> บันทึกค่าแต้มและกาชา
+                                    </button>
+                                </div>
+                                
+                                <div class="tab-pane fade" id="setShop">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-3"><label class="form-label fw-bold text-muted small">โอนปกติ (฿)</label><input type="number" id="setShipEms" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-3"><label class="form-label fw-bold text-muted small">เก็บปลายทาง COD (฿)</label><input type="number" id="setShipCod" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-3"><label class="form-label fw-bold text-muted small">บวกพื้นที่ห่างไกล (+฿)</label><input type="number" id="setShipRemote" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-3"><label class="form-label fw-bold text-success small">ยอดสั่งซื้อส่งฟรี (฿)</label><input type="number" id="setFreeShipLimit" class="form-control border-success text-success fw-bold shadow-sm"></div>
+                                    </div>
+                                    <button class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('shipping')">
+                                        <i class="fas fa-save me-1"></i> บันทึกค่าจัดส่ง
+                                    </button>
+                                </div>
+
+                                <div class="tab-pane fade" id="setContact">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-6"><label class="form-label fw-bold text-muted small">เบอร์โทรศัพท์</label><input type="text" id="setContactPhone" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold text-success small">LINE URL</label><input type="text" id="setContactLine" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold text-primary small">Facebook URL</label><input type="text" id="setContactFb" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold text-dark small">TikTok URL</label><input type="text" id="setContactTiktok" class="form-control bg-light border-0 shadow-sm"></div>
+                                    </div>
+                                    <button class="btn btn-primary fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('contact')">
+                                        <i class="fas fa-save me-1"></i> บันทึกช่องทางติดต่อ
+                                    </button>
+                                </div>
+
+                                <div class="tab-pane fade" id="setAi">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-primary small">รุ่นโมเดล AI (Gemini)</label>
+                                            <select id="setAiModel" class="form-select border-primary shadow-sm">
+                                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (ไว)</option>
+                                                <option value="gemini-2.5-flash">Gemini 2.5 Flash (แม่นยำ)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-muted small">หมวดหมู่สินค้า (คั่นด้วย , )</label>
+                                            <input type="text" id="setCategories" class="form-control bg-light border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">ชุดคำสั่งสอน AI (System Prompt)</label>
+                                            <textarea id="setAiPrompt" class="form-control bg-light border-0 shadow-sm" rows="6"></textarea>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-danger fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('ai')">
+                                        <i class="fas fa-save me-1"></i> บันทึกตั้งค่า AI & หมวดหมู่
+                                    </button>
+                                </div>
+
+                                <div class="tab-pane fade" id="setTracking">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">หัวข้อประกาศ (บรรทัดแรก)</label>
+                                            <input type="text" id="setTrackingHeader" class="form-control bg-light border-0 shadow-sm" placeholder='เช่น 📦 แจ้งเลขพัสดุ "บ้านรถของเล่น"'>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">URL เว็บไซต์ (ที่จะแสดงท้ายบิล)</label>
+                                            <input type="text" id="setTrackingUrl" class="form-control bg-light border-0 shadow-sm" placeholder="https://...">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">ข้อความแจ้งสิทธิพิเศษ/เงื่อนไข</label>
+                                            <textarea id="setTrackingBenefit" class="form-control bg-light border-0 shadow-sm" rows="5" placeholder="🎉 สิทธิพิเศษสำหรับลูกค้า..."></textarea>
+                                            <small class="text-muted">ส่วนนี้จะแสดงหลังรายการเลขพัสดุ และก่อน URL เว็บไซต์</small>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">คำลงท้าย</label>
+                                            <input type="text" id="setTrackingFooter" class="form-control bg-light border-0 shadow-sm" placeholder="เช่น ขอบคุณที่อุดหนุนครับ 🙏">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-info text-white fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('tracking')">
+                                        <i class="fas fa-save me-1"></i> บันทึกเทมเพลตแจ้งเลข
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="logsTab">
+                    <div class="card"><div class="card-header"><span><i class="fas fa-shield-alt me-2"></i> Security Logs</span><button class="btn btn-sm btn-light rounded-pill" onclick="loadLogs()"><i class="fas fa-sync-alt"></i></button></div>
+                        <div class="card-body table-responsive"><table class="table table-sm align-middle"><thead><tr><th>เวลา</th><th>User (เบอร์)</th><th>Action</th><th>รายละเอียด</th></tr></thead><tbody id="logsTable"></tbody></table><div id="page-logsTable"></div></div></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div class="modal fade" id="productModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow-lg"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold text-success">📦 จัดการสินค้าปกติ</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form id="productForm" onsubmit="saveProduct(event)"><input type="hidden" id="pRow" /><label class="small text-muted fw-bold">ชื่อสินค้า</label><input type="text" id="pName" class="form-control bg-light border-0 mb-3 text-dark" required /><div class="row"><div class="col-6"><label class="small text-muted fw-bold">แต้มที่ใช้แลก</label><input type="number" id="pPoints" class="form-control bg-light border-0 mb-3 text-primary fw-bold" required /></div><div class="col-6"><label class="small text-muted fw-bold">สต็อกเริ่มต้น</label><input type="number" id="pStock" class="form-control bg-light border-0 mb-3 fw-bold text-dark" required /></div></div><label class="small text-muted fw-bold">รายละเอียด</label><textarea id="pDesc" class="form-control bg-light border-0 mb-3 text-dark" rows="3"></textarea><label class="small text-muted fw-bold">รูปภาพ</label><input type="file" id="pFile" class="form-control mb-2" accept="image/*" /><small class="text-danger d-none mb-4 d-block" id="pEditHint">* ไม่เปลี่ยนรูป ไม่ต้องอัปโหลดใหม่</small><button type="submit" class="btn btn-success w-100 py-2 fw-bold rounded-pill" id="pSaveBtn">💾 บันทึกสินค้า</button></form></div></div></div></div>
+    <div class="modal fade" id="gachaModal"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0 rounded-4 shadow-lg"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold text-danger">🃏 จัดการการ์ดรางวัล (Gacha)</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form id="gachaForm" onsubmit="saveGacha(event)"><input type="hidden" id="gRow"><label class="small text-muted fw-bold">ชื่อรางวัล / ชื่อการ์ด</label><input type="text" id="gName" class="form-control bg-light border-0 mb-3 text-dark" required><div class="row"><div class="col-6"><label class="small text-muted fw-bold">ประเภท</label><select id="gType" class="form-select bg-light border-0 mb-3 text-dark" required onchange="toggleGachaType()"><option value="Product">🎁 ของรางวัล</option><option value="Points">🪙 คืนแต้มโบนัส</option></select></div><div class="col-6"><label class="small text-muted fw-bold">หมวดหมู่ความแรร์</label><select id="gCategory" class="form-select bg-light border-0 mb-3 text-dark" required><option value="รถแรร์">🌟 รถแรร์</option><option value="รถหัวในลัง">📦 รถหัวในลัง</option><option value="รถทั่วไป">🚗 รถทั่วไป</option><option value="การ์ดแรร์">🃏 การ์ดแรร์</option><option value="การ์ดเกลือ">🧂 การ์ดเกลือ</option></select></div></div><div id="gValueDiv"><label id="gValueLabel" class="small text-muted fw-bold">รหัสอ้างอิง (สินค้า)</label><input type="text" id="gValue" class="form-control bg-light border-0 mb-3 text-dark" required></div><div class="row"><div class="col-6"><label class="small text-muted fw-bold">สต็อกในตู้</label><input type="number" id="gStock" class="form-control bg-light border-0 mb-3 fw-bold text-dark" required></div><div class="col-6"><label class="small text-muted fw-bold text-primary">โอกาสออก (Rate %)</label><input type="number" step="0.01" id="gRate" class="form-control border-primary mb-3 fw-bold text-primary bg-white" required></div></div><div id="gImageDiv"><label class="small text-muted fw-bold">รูปภาพการ์ด</label><input type="file" id="gFile" class="form-control mb-1" accept="image/*"><small class="text-danger d-none mb-3 d-block" id="gEditHint">* ไม่เปลี่ยนรูป ไม่ต้องอัปโหลดใหม่</small></div><div id="gPitySetup" class="mt-2 mb-4 p-3 border border-danger rounded-4 bg-danger bg-opacity-10 d-none"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="gIsPity" onchange="document.getElementById('gPityCountDiv').classList.toggle('d-none', !this.checked)"><label class="form-check-label fw-bold text-danger">🎯 เปิดระบบการันตี (Pity)</label></div><div id="gPityCountDiv" class="d-none"><label class="small text-dark fw-bold">บังคับแตกเมื่อสุ่มครบ (ครั้ง)</label><input type="number" id="gPityCount" class="form-control border-danger mt-1 bg-white text-dark"></div></div><div id="gPointsHint" class="alert alert-warning small d-none mb-4 border-0">✨ ระบบจะสร้างรูปให้เอง</div><button type="submit" class="btn btn-danger w-100 py-2 fw-bold rounded-pill" id="gSaveBtn">💾 บันทึกการ์ดเข้าตู้</button></form></div></div></div></div>
+    <div class="modal fade" id="rejectModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow"><div class="modal-header bg-danger text-white border-0"><h5 class="modal-title fw-bold">❌ ปฏิเสธรายการ</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><input type="hidden" id="rejType" /><input type="hidden" id="rejId" /><label class="fw-bold mb-2">โปรดระบุเหตุผล:</label><textarea id="rejRemark" class="form-control bg-light border-0 mb-4 text-dark" rows="3" required></textarea><button class="btn btn-danger w-100 py-2 fw-bold rounded-pill" id="rejSaveBtn" onclick="submitReject()">ยืนยันการปฏิเสธ</button></div></div></div></div>
+    <div class="modal fade" id="userModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow-lg"><div class="modal-header bg-primary text-white border-0"><h5 class="modal-title fw-bold">✏️ แก้ไขข้อมูลสมาชิก</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form onsubmit="saveUser(event)"><input type="hidden" id="uRow" /><div class="row g-3"><div class="col-md-6"><label class="form-label fw-bold small text-muted">เบอร์โทร</label><input type="tel" id="uPhone" class="form-control bg-light border-0" readonly /></div><div class="col-md-6"><label class="form-label fw-bold text-danger small">รหัสผ่าน</label><input type="text" id="uPassword" class="form-control border-danger" required></div><div class="col-md-6"><label class="form-label fw-bold small text-muted">ชื่อ</label><input type="text" id="uFName" class="form-control bg-light border-0" required /></div><div class="col-md-6"><label class="form-label fw-bold small text-muted">นามสกุล</label><input type="text" id="uLName" class="form-control bg-light border-0" required /></div><div class="col-md-12"><label class="form-label fw-bold small text-muted">ที่อยู่</label><input type="text" id="uAddress" class="form-control bg-light border-0" required /></div><div class="col-md-4"><label class="form-label fw-bold small text-muted">ตำบล</label><input type="text" id="uSubDistrict" class="form-control bg-light border-0" required /></div><div class="col-md-4"><label class="form-label fw-bold small text-muted">อำเภอ</label><input type="text" id="uDistrict" class="form-control bg-light border-0" required /></div><div class="col-md-4"><label class="form-label fw-bold small text-muted">จังหวัด</label><input type="text" id="uProvince" class="form-control bg-light border-0" required /></div><div class="col-md-6"><label class="form-label fw-bold small text-muted">รหัส ปณ.</label><input type="text" id="uZip" class="form-control border-info" maxlength="5" required /></div><div class="col-md-6"><label class="form-label fw-bold text-primary small">แต้มคงเหลือ</label><input type="number" step="0.01" id="uPoints" class="form-control border-primary" required /></div></div><button type="submit" class="btn btn-primary w-100 mt-4 py-3 fw-bold rounded-pill shadow-sm" id="uSaveBtn">💾 บันทึกข้อมูลสมาชิก</button></form></div></div></div></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/api.js"></script>
+    
+    <script>
+        function rowPendingOrder(o) { return `<tr id="row-o-${o.orderId}"><td><small class="text-muted">${o.timestamp}</small></td><td class="fw-bold">${o.orderId}</td><td>${o.name}<br><small class="text-muted">${o.phone}</small></td><td><span class="badge border" style="background:var(--bg-color); color:var(--text-color)">${o.channel}</span></td><td class="text-success fw-bold">฿${o.amount}</td><td class="text-primary fw-bold">+${o.points || 0}</td><td class="text-end text-nowrap"><button class="btn btn-action btn-success shadow-sm" onclick="approveOrder('${o.orderId}')"><i class="fas fa-check"></i></button> <button class="btn btn-action btn-danger shadow-sm" onclick="openReject('order', '${o.orderId}')"><i class="fas fa-times"></i></button></td></tr>`; }
+        function rowHistoryOrder(o) { let badgeClass = o.status === "Approved" ? "bg-success bg-opacity-10 text-success border border-success" : "bg-danger bg-opacity-10 text-danger border border-danger"; return `<tr><td><small class="text-muted">${o.timestamp}</small></td><td><span class="fw-bold">${o.orderId}</span><br><small class="text-muted">${o.channel}</small></td><td>${o.name}</td><td class="fw-bold">฿${o.amount}</td><td class="text-primary fw-bold">+${o.points || 0}</td><td><span class="badge ${badgeClass}">${o.status}</span><br><small class="text-danger mt-1 d-block">${o.remark !== '-' ? o.remark : ''}</small></td></tr>`; }
+        function rowPendingRedeem(r) { return `<tr id="row-r-${r.rowIndex}"><td><input type="checkbox" class="form-check-input chk-redeem" value="${r.rowIndex}"></td><td><small class="text-muted">${r.timestamp}</small></td><td><span class="fw-bold">${r.name}</span><br><small class="text-muted">${r.phone}</small></td><td><small style="line-height:1.3; display:block;">${r.address}</small></td><td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary px-3 py-2">${r.productId}</span></td><td class="text-end text-nowrap"><button class="btn btn-sm btn-outline-danger w-100 mb-1" onclick="openReject('redeem', '${r.rowIndex}')">ยกเลิก</button><br><button class="btn btn-sm btn-dark w-100" onclick="forfeitReward('${r.rowIndex}')">ยึดสิทธิ์</button></td></tr>`; }
+        function rowHistoryRedeem(r) { let badgeClass = r.status === "จัดส่งแล้ว" ? "bg-success" : r.status === "Pending" ? "bg-warning text-dark" : "bg-dark"; return `<tr><td><small class="text-muted">${r.timestamp}</small></td><td><span class="fw-bold text-primary">${r.productId}</span></td><td>${r.name}</td><td><span class="badge ${badgeClass} px-3">${r.status}</span></td><td><small class="text-danger">${r.remark !== '-' ? r.remark : ''}</small></td></tr>`; }
+        
+        function rowUser(u) { const isRemote = typeof remoteZipCodes !== 'undefined' && remoteZipCodes.includes(u.zipcode) ? '<span class="remote-badge"><i class="fas fa-truck"></i> ห่างไกล</span>' : ""; return `<tr><td><span class="text-dark fw-bold">${u.phone}</span><br><small class="text-muted" style="font-size:0.65rem;">IP: ${u.ip || '-'}</small></td><td class="fw-bold">${u.fname || u.name}</td><td><small class="text-muted">${u.address || ""}</small></td><td>${u.zipcode || ""} ${isRemote}</td><td class="text-primary fw-bold text-center bg-primary bg-opacity-10 rounded-3">${parseFloat(u.points||0).toFixed(2)}</td><td><span class="badge bg-${u.status==='Banned'?'danger':'success'}">${u.status}</span></td><td class="text-end text-nowrap"><button class="btn btn-action btn-warning text-dark shadow-sm" onclick="openEditUserByPhone('${u.phone}')"><i class="fas fa-pen"></i></button> <button class="btn btn-action btn-dark shadow-sm" onclick="banUser(${u.rowIndex}, '${u.phone}', '${u.status === "Banned" ? "Active" : "Banned"}')"><i class="fas fa-ban"></i></button></td></tr>`; }
+        function rowProduct(p) { return `<tr><td><img src="${p.image}" class="rounded-3 shadow-sm border" height="45" width="45" style="object-fit:cover;"></td><td class="fw-bold">${p.name}</td><td class="text-primary fw-bold">${p.points} Pts</td><td><span class="badge border px-3 fs-6" style="background:var(--bg-color); color:var(--text-color)">${p.stock}</span></td><td class="text-end text-nowrap"><button class="btn btn-action btn-warning text-dark shadow-sm" onclick="openProductModalById('${p.id}')"><i class="fas fa-pen"></i></button> <button class="btn btn-action btn-danger shadow-sm" onclick="deleteItem('deleteProduct', '${p.id}', loadProducts)"><i class="fas fa-trash"></i></button></td></tr>`; }
+        function rowGacha(g) { let isP = (g.isPity === true || g.isPity === 'true'); let pityBadge = isP ? `<br><span class="badge bg-danger mt-1"><i class="fas fa-bullseye"></i> การันตี: ${g.pityCount}</span>` : ''; let typeBadge = g.type === 'Points' ? 'bg-warning text-dark' : 'bg-primary'; return `<tr><td><img src="${g.image}" class="rounded-3 shadow-sm border" height="55" width="45" style="object-fit:cover;"></td><td><span class="fw-bold">${g.name}</span><br><small class="text-muted">${g.category || ''}</small>${pityBadge}</td><td><span class="badge ${typeBadge}">${g.type}</span></td><td><span class="fw-bold text-secondary">${g.value}</span></td><td><span class="badge border px-3 fs-6" style="background:var(--bg-color); color:var(--text-color)">${g.stock}</span></td><td class="text-success fw-bold">${g.rate}%</td><td class="text-end text-nowrap"><button class="btn btn-action btn-warning text-dark shadow-sm" onclick="openGachaModalById('${g.id}')"><i class="fas fa-pen"></i></button> <button class="btn btn-action btn-danger shadow-sm" onclick="deleteItem('deleteGacha', '${g.id}', loadGacha)"><i class="fas fa-trash"></i></button></td></tr>`; }
+        function rowLog(l) { let actColor = (l.action || '').includes('RESET') ? 'danger' : 'secondary'; return `<tr><td><small class="text-muted">${l.timestamp || '-'}</small></td><td class="fw-bold">${l.user || '-'}</td><td><span class="badge bg-${actColor}">${l.action || '-'}</span></td><td><small class="text-muted">${l.detail || '-'}</small></td></tr>`; }
+    </script>
+
+    <script>
+        const themes = {
+            'default': { primary: '#4f46e5', sidebar: '#0f172a', bg: '#f4f7fb', surface: '#ffffff', text: '#334155', header: '#ffffff', border: '#f1f5f9' },
+            'darkmode':{ primary: '#3b82f6', sidebar: '#000000', bg: '#111827', surface: '#1f2937', text: '#f3f4f6', header: '#1f2937', border: '#374151' }
+        };
+        function setTheme(t) { const r = document.documentElement; const th = themes[t] || themes['default']; r.style.setProperty('--primary-color', th.primary); r.style.setProperty('--sidebar-bg', th.sidebar); r.style.setProperty('--bg-color', th.bg); r.style.setProperty('--surface-color', th.surface); r.style.setProperty('--text-color', th.text); r.style.setProperty('--card-header-bg', th.header); r.style.setProperty('--border-color', th.border); localStorage.setItem('adminTheme', t); }
+        setTheme(localStorage.getItem('adminTheme') || 'default');
+    </script>
+
+    <script src="js/admin-core.js"></script>
+    <script src="js/admin-reward.js"></script>
+    <script src="js/admin-inventory.js"></script>
+    <script src="js/admin-user.js"></script>
+    <script>window.onload = () => { loadData(); loadUsers(); loadProducts(); loadSettings(); loadLogs(); loadGacha(); };</script>
+</body>
+</html>
