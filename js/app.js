@@ -193,7 +193,7 @@ window.updateNav = function() {
             <a class="mobile-nav-item ${currentPage==='gacha'?'active':''}" onclick="showPage('gacha')">
                 <i class="fas fa-dice"></i><span>${currentLang==='th'?'กาชา':'Gacha'}</span>
             </a>
-            <a class="mobile-nav-item special-btn" onclick="showPage('shop')">
+            <a class="mobile-nav-item special-btn active" onclick="showPage('shop')">
                 <i class="fas fa-store"></i><span class="text-success mt-1">${currentLang==='th'?'ร้านค้า':'Shop'}</span>
             </a>
             <a class="mobile-nav-item ${currentPage==='order'?'active':''}" onclick="showPage('order')">
@@ -216,7 +216,7 @@ window.updateNav = function() {
 // ==========================================
 window.showPage = async function (page) {
   currentPage = page; 
-  updateNav(); // เรียกให้เปลี่ยนสีเมนูแบบ Real-time
+  updateNav();
   const container = document.getElementById("app-content");
 
   if (page === "shop") return typeof renderShopPage === "function" ? renderShopPage() : container.innerHTML = '<div class="alert alert-danger">Error: ไฟล์ shop.js มีปัญหา</div>';
@@ -241,19 +241,17 @@ window.showPage = async function (page) {
 };
 
 // ==========================================
-// 🤖 4. ระบบแชทผู้ช่วย AI (AI Chat Assistant)
+// 🤖 4. ระบบแชทผู้ช่วย AI
 // ==========================================
 let isChatInit = false;
 
 window.toggleChat = function() {
   const box = document.getElementById("chat-box");
   box.classList.toggle("d-none");
-  
   if (!isChatInit) {
-      appendChatMessage('AI', 'สวัสดีครับ! 🚗 ผมคือผู้ช่วย AI ของบ้านรถของเล่น มีอะไรให้ผมช่วยไหมครับ?<br><br>💡 คุณสามารถถามผมเรื่องเหล่านี้ได้เลย:<br>• วิธีสั่งซื้อสินค้า / เช็คสต็อก<br>• วิธีแจ้งยอดรับแต้ม<br>• กฎการแลกของและการสุ่มกาชา');
+      appendChatMessage('AI', 'สวัสดีครับ! 🚗 ผมคือผู้ช่วย AI ของบ้านรถของเล่น มีอะไรให้ผมช่วยไหมครับ?');
       isChatInit = true;
   }
-  
   const scrollArea = document.getElementById("chatMessages");
   setTimeout(() => { scrollArea.scrollTop = scrollArea.scrollHeight; }, 100);
 }
@@ -262,19 +260,13 @@ window.sendChatMessage = async function() {
     const input = document.getElementById("chatInput");
     const msg = input.value.trim();
     if (!msg) return;
-    
     appendChatMessage('User', msg);
     input.value = "";
     showTypingIndicator();
-
     const res = await API.shopPost({ action: "aiChat", message: msg });
-    
     removeTypingIndicator();
-    if (res.status === "success") {
-        appendChatMessage('AI', res.answer);
-    } else {
-        appendChatMessage('AI', 'ขออภัยครับ ระบบ AI ขัดข้องชั่วคราว รบกวนลองใหม่อีกครั้งครับ 🙏');
-    }
+    if (res.status === "success") appendChatMessage('AI', res.answer);
+    else appendChatMessage('AI', 'ขออภัยครับ ระบบ AI ขัดข้องชั่วคราว 🙏');
 }
 
 function appendChatMessage(sender, text) {
@@ -282,7 +274,6 @@ function appendChatMessage(sender, text) {
     const isAI = sender === 'AI';
     const bubbleClass = isAI ? 'chat-ai' : 'chat-user';
     const alignClass = isAI ? 'align-items-start' : 'align-items-end';
-    
     const html = `<div class="d-flex flex-column ${alignClass}"><div class="chat-bubble shadow-sm ${bubbleClass}">${text}</div></div>`;
     chatArea.insertAdjacentHTML('beforeend', html);
     chatArea.scrollTop = chatArea.scrollHeight; 
@@ -298,6 +289,56 @@ function showTypingIndicator() {
 function removeTypingIndicator() {
     const el = document.getElementById("typingIndicator");
     if (el) el.remove();
+}
+
+window.viewProductFromChat = async function(productId) {
+    const chatBox = document.getElementById("chat-box");
+    if(chatBox) chatBox.classList.add("d-none");
+    Swal.fire({ title: 'กำลังค้นหาสินค้า...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    const res = await API.shopGet("getProducts"); 
+    if (res.status === 'success') {
+        let cleanId = productId.replace(/\[|\]|\*|"|'/g, '').trim();
+        const p = res.data.find(x => x.id === cleanId);
+        if (p) {
+            let imgUrl = p.image && p.image.trim() !== '' ? p.image : 'https://placehold.co/400x400/eeeeee/31343C?text=No+Image';
+            let price = parseFloat(p.retail_price) || 0;
+            let stock = parseInt(p.stock) || 0;
+            Swal.fire({
+                title: `<span class="fw-bold text-dark fs-4">${p.name}</span>`,
+                html: `
+                    <div class="mb-3"><span class="badge bg-primary px-3 py-2 fs-6">ราคา ฿${price.toLocaleString()}</span></div>
+                    <p class="text-muted small">${p.desc || 'ไม่มีรายละเอียดเพิ่มเติม'}</p>
+                    <div class="alert alert-info py-2 mb-0 fw-bold">คงเหลือในสต๊อก: ${stock} คัน</div>
+                `,
+                imageUrl: imgUrl,
+                imageWidth: 250,
+                imageClass: 'rounded-4 shadow-sm border border-2 border-light mb-3',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-cart-plus me-1"></i> หยิบใส่ตะกร้า',
+                cancelButtonText: 'ปิดหน้าต่าง',
+                confirmButtonColor: '#10b981',
+                cancelButtonColor: '#6c757d'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    if (stock <= 0) return Swal.fire('ขออภัยค่ะ', 'สินค้ารายการนี้หมดสต๊อกแล้ว', 'warning');
+                    let cart = JSON.parse(localStorage.getItem('shopCart')) || [];
+                    let existing = cart.find(i => i.id === p.id);
+                    if (existing) {
+                        if (existing.qty < stock) existing.qty++;
+                        else return Swal.fire('สต๊อกไม่พอ!', 'คุณหยิบสินค้าชิ้นนี้จนหมดสต๊อกแล้วค่ะ', 'warning');
+                    } else {
+                        cart.push({ id: p.id, sku: p.sku, name: p.name, price: price, retail_price: price, qty: 1, maxStock: stock, stock: stock, img: imgUrl });
+                    }
+                    localStorage.setItem('shopCart', JSON.stringify(cart));
+                    updateNav(); 
+                    Swal.fire({ title: 'เพิ่มลงตะกร้าแล้ว! 🎉', icon: 'success', timer: 1500, showConfirmButton: false }).then(() => {
+                        sessionStorage.setItem('openCartAfterRefresh', 'true');
+                        window.location.reload(); 
+                    });
+                }
+            });
+        } else { Swal.fire('ขออภัยค่ะ', 'สินค้ารายการนี้อาจหมดสต๊อกหรือถูกลบไปแล้วค่ะ', 'error'); }
+    } else { Swal.fire('ผิดพลาด', 'ไม่สามารถเชื่อมต่อฐานข้อมูลได้', 'error'); }
 }
 
 // ==========================================
@@ -386,12 +427,13 @@ window.viewProductFromChat = async function(productId) {
 window.onload = () => {
   updateNav();
   
-  // 💡 เมื่อโหลดหน้าเว็บเสร็จ ให้ตรวจเช็คว่ามีการสั่งให้เปิดตะกร้าค้างไว้หรือไม่
+  // 💡 ตรวจเช็คว่าต้องเปิดตะกร้าหลังรีเฟรชหรือไม่
   if (sessionStorage.getItem('openCartAfterRefresh') === 'true') {
       sessionStorage.removeItem('openCartAfterRefresh');
-      showPage("cart"); // พุ่งไปหน้าตะกร้าพร้อมข้อมูลอัปเดตใหม่สุด!
+      showPage("cart");
   } else {
-      showPage("home");
+      // 💡 เปลี่ยนจาก "home" เป็น "shop" เพื่อให้หน้าแรกคือร้านค้าเสมอ
+      showPage("shop"); 
   }
 
   loadNotiAndStats();

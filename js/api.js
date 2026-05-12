@@ -3,10 +3,10 @@
 // ==========================================
 
 // ⚠️ 1. URL ระบบสะสมแต้ม/กาชา (อันเดิมของคุณ)
-const REWARD_API_URL = "https://script.google.com/macros/s/AKfycbw-vGADATsY7HMf6opkp91mn0HTM5TW2znZNeuI59XygI9FCObDN1ZuwgZ17LRwy4O5/exec"; 
+const REWARD_API_URL = "https://script.google.com/macros/s/AKfycbyjyaHQZY37rJnc_jdgYhto5J3kkwHAn0kng2TKljm568VRC8K46AUZjwg-6-fevSacBA/exec"; 
 
 // ⚠️ 2. URL ระบบร้านค้าอัจฉริยะ (อันใหม่ที่คุณเพิ่งทำ)
-const SHOP_API_URL = "https://script.google.com/macros/s/AKfycbwjzfP4OLhlCVsGSUpiUQjj-gD3aMu79BWyrJU4zr-iiTSB4DRj3h-W9gQ_Kgzroy4a/exec"; 
+const SHOP_API_URL = "https://script.google.com/macros/s/AKfycbxZVAA2xaIqF1mYiOJeZmiORN14SGUtf5apDv_UG0QMvXhrbFvmKFEm8xXa1z1gpcqr3Q/exec"; 
 
 const API = {
     // --- ท่อส่งข้อมูลที่ 1: สำหรับระบบสะสมแต้ม/กาชา (Reward System) ---

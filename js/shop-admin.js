@@ -1,5 +1,6 @@
 // ==========================================
 // 🛒 Module: Shop Admin (AI Scanner, CRUD & Pagination)
+// ฉบับสมบูรณ์: เพิ่มระบบ "ตัวเลือกสินค้า (Variants)"
 // ==========================================
 
 let videoStream = null;
@@ -8,7 +9,6 @@ let currentEditId = null;
 let allProducts = []; 
 let scannedImageBase64 = null; 
 
-// 🔢 ตั้งค่าการแบ่งหน้า
 let currentShopPage = 1;
 const shopItemsPerPage = 10;
 
@@ -68,59 +68,90 @@ document.getElementById('cameraModal')?.addEventListener('hidden.bs.modal', () =
     if (videoStream) videoStream.getTracks().forEach(track => track.stop());
 });
 
+// 📸 2. ถ่ายภาพและบีบอัดขนาด
 window.captureAndAnalyze = async function() {
     try {
         const video = document.getElementById('cameraFeed');
         if (!video || video.videoWidth === 0) return Swal.fire('แจ้งเตือน', 'กล้องยังไม่พร้อม', 'warning');
+        
         const canvas = document.createElement('canvas');
-        canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-        const imageData = canvas.toDataURL('image/jpeg', 0.8);
+        let width = video.videoWidth; 
+        let height = video.videoHeight;
+        
+        const MAX_WIDTH = 600; 
+        if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+        }
+
+        canvas.width = width; 
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(video, 0, 0, width, height);
+        
+        const imageData = canvas.toDataURL('image/jpeg', 0.6);
+        
         Swal.fire({ title: 'AI กำลังวิเคราะห์ภาพ...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
         const res = await API.shopPost({ action: 'analyzeImageAI', image: imageData });
+        
         if (res.status === 'success') {
             document.getElementById("pName").value = res.data.name || '';
             document.getElementById("pDesc").value = res.data.description || '';
             await window.loadDynamicCategories(res.data.category);
+            
             document.getElementById('imagePreview').src = imageData;
             document.getElementById('imagePreviewContainer').classList.remove('d-none');
-            scannedImageBase64 = imageData;
+            
+            scannedImageBase64 = imageData; 
+            
             bootstrap.Modal.getInstance(document.getElementById('cameraModal'))?.hide();
             Swal.fire('วิเคราะห์สำเร็จ', '', 'success');
         } else { Swal.fire('ผิดพลาด', res.message, 'error'); }
     } catch (e) { Swal.fire('Error', e.message, 'error'); }
 }
 
+// 💾 3. บันทึกข้อมูลสินค้า (เพิ่มตัวเลือกสินค้า Variants)
 window.saveProductData = async function(e) {
     e.preventDefault();
     const btn = document.getElementById('saveBtn');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
     btn.disabled = true;
+    
+    // 💡 เช็คก่อนว่าใน HTML มีช่อง pVariants ไหม ถ้าไม่มีให้ส่งค่าว่าง
+    const variantsInput = document.getElementById('pVariants');
+    const variantsValue = variantsInput ? variantsInput.value : "";
+    
     const payload = {
-        action: isEditMode ? 'editProduct' : 'addProduct', id: currentEditId,
-        sku: document.getElementById('pSku').value, name: document.getElementById('pName').value,
-        category: document.getElementById('pCategory').value, retail_price: document.getElementById('pRetailPrice').value,
-        wholesale_price: document.getElementById('pWholesalePrice').value, stock: document.getElementById('pStock').value,
-        desc: document.getElementById('pDesc').value, image: scannedImageBase64
+        action: isEditMode ? 'editProduct' : 'addProduct', 
+        id: currentEditId,
+        sku: document.getElementById('pSku').value, 
+        name: document.getElementById('pName').value,
+        category: document.getElementById('pCategory').value, 
+        retail_price: document.getElementById('pRetailPrice').value,
+        wholesale_price: document.getElementById('pWholesalePrice').value, 
+        stock: document.getElementById('pStock').value,
+        desc: document.getElementById('pDesc').value, 
+        variants: variantsValue, // 💡 ส่งข้อมูลตัวเลือกลงไปที่หลังบ้าน
+        image: scannedImageBase64 
     };
+    
     const res = await API.shopPost(payload);
     if (res.status === 'success') {
-        Swal.fire('สำเร็จ', 'บันทึกข้อมูลเรียบร้อย', 'success');
+        Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success');
         window.resetForm();
         window.loadProducts();
     } else { Swal.fire('ผิดพลาด', res.message, 'error'); }
     btn.disabled = false;
 }
 
+// 📋 4. ระบบแสดงสินค้า
 window.loadProducts = async function() {
     const res = await API.shopGet("getProducts");
     if (res.status === 'success') { 
-        allProducts = res.data.reverse(); // ล่าสุดขึ้นก่อน
+        allProducts = res.data.reverse(); 
         window.renderShopTable(); 
     }
 }
 
-// 📋 5. วาดตารางสินค้า พร้อมระบบ Pagination
 window.renderShopTable = function() {
     const tbody = document.getElementById("productTableBody");
     if (!tbody) return;
@@ -131,7 +162,6 @@ window.renderShopTable = function() {
         return;
     }
 
-    // คำนวณ Index สำหรับ Slice ข้อมูล
     const startIndex = (currentShopPage - 1) * shopItemsPerPage;
     const endIndex = startIndex + shopItemsPerPage;
     const paginatedItems = allProducts.slice(startIndex, endIndex);
@@ -139,11 +169,15 @@ window.renderShopTable = function() {
     let html = '';
     paginatedItems.forEach(p => {
         let imgTag = p.image ? `<img src="${p.image}" class="product-img-td shadow-sm">` : '<span class="badge bg-secondary">No Img</span>';
+        
+        // 💡 ถ้าสินค้านี้มีตัวเลือก ให้โชว์ป้ายสีเหลืองแจ้งให้แอดมินทราบ
+        let variantBadge = p.variants && p.variants.trim() !== "" ? `<br><span class="badge bg-warning text-dark mt-1" style="font-size:0.65rem;">มีตัวเลือก</span>` : "";
+
         html += `
         <tr>
             <td>${imgTag}</td>
             <td><span class="badge bg-dark">${p.sku}</span></td>
-            <td class="fw-bold">${p.name}</td>
+            <td class="fw-bold">${p.name}${variantBadge}</td>
             <td><span class="badge bg-info text-dark">${p.category}</span></td>
             <td class="text-success fw-bold">฿${p.retail_price}</td>
             <td class="text-primary fw-bold">${p.stock}</td>
@@ -154,23 +188,18 @@ window.renderShopTable = function() {
         </tr>`;
     });
     tbody.innerHTML = html;
-    
-    // วาดปุ่มเปลี่ยนหน้า
     window.renderPagination(allProducts.length);
 }
 
-// 🔢 ฟังก์ชันวาดปุ่ม Pagination
 window.renderPagination = function(totalItems) {
     const totalPages = Math.ceil(totalItems / shopItemsPerPage);
     const container = document.getElementById("paginationContainer");
     if (totalPages <= 1) { container.innerHTML = ''; return; }
 
     let html = `<nav><ul class="pagination justify-content-center shadow-sm">`;
-    // ปุ่มย้อนกลับ
     html += `<li class="page-item ${currentShopPage === 1 ? 'disabled' : ''}"><a class="page-link" href="#" onclick="changeShopPage(${currentShopPage - 1}); return false;">«</a></li>`;
     
     for (let i = 1; i <= totalPages; i++) {
-        // โชว์เฉพาะหน้าแรก หน้าสุดท้าย และหน้าปัจจุบันรอบข้าง
         if (i === 1 || i === totalPages || (i >= currentShopPage - 1 && i <= currentShopPage + 1)) {
             html += `<li class="page-item ${currentShopPage === i ? 'active' : ''}"><a class="page-link" href="#" onclick="changeShopPage(${i}); return false;">${i}</a></li>`;
         } else if (i === currentShopPage - 2 || i === currentShopPage + 2) {
@@ -178,7 +207,6 @@ window.renderPagination = function(totalItems) {
         }
     }
     
-    // ปุ่มไปหน้าถัดไป
     html += `<li class="page-item ${currentShopPage === totalPages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="changeShopPage(${currentShopPage + 1}); return false;">»</a></li>`;
     html += `</ul></nav>`;
     container.innerHTML = html;
@@ -190,10 +218,14 @@ window.changeShopPage = function(page) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// ✏️ 5. เปิดโหมดแก้ไข
 window.editProduct = function(id) {
     const p = allProducts.find(x => x.id === id);
     if (!p) return;
-    isEditMode = true; currentEditId = id;
+    
+    isEditMode = true; 
+    currentEditId = id;
+    
     document.getElementById('pSku').value = p.sku;
     document.getElementById('pName').value = p.name;
     document.getElementById('pCategory').value = p.category;
@@ -201,11 +233,22 @@ window.editProduct = function(id) {
     document.getElementById('pWholesalePrice').value = p.wholesale_price;
     document.getElementById('pStock').value = p.stock;
     document.getElementById('pDesc').value = p.desc;
+    
+    // 💡 ดึงค่าตัวเลือกกลับมาโชว์ในช่อง input (เพื่อแก้ไขต่อ)
+    if (document.getElementById('pVariants')) {
+        document.getElementById('pVariants').value = p.variants || "";
+    }
+
     if (p.image) {
         document.getElementById('imagePreview').src = p.image;
         document.getElementById('imagePreviewContainer').classList.remove('d-none');
-        scannedImageBase64 = p.image;
+        scannedImageBase64 = null; 
+    } else {
+        document.getElementById('imagePreview').src = '';
+        document.getElementById('imagePreviewContainer').classList.add('d-none');
+        scannedImageBase64 = null;
     }
+    
     window.scrollTo({ top: 0, behavior: 'smooth' });
     window.updateSaveButtonUI();
 }
@@ -225,6 +268,12 @@ window.resetForm = function() {
     document.getElementById('pSku').value = window.generateSKU(); 
     document.getElementById('imagePreview').src = '';
     document.getElementById('imagePreviewContainer').classList.add('d-none');
+    
+    // 💡 เคลียร์ช่องตัวเลือกสินค้า
+    if (document.getElementById('pVariants')) {
+        document.getElementById('pVariants').value = "";
+    }
+    
     window.loadDynamicCategories();
     window.updateSaveButtonUI();
 }

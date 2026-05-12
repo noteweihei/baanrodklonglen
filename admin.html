@@ -188,74 +188,113 @@
                 <!-- ⚙️ หมวดตั้งค่าระบบแบบครอบจักรวาล -->
                 <div class="tab-pane fade" id="settingsTab">
                     <div class="card shadow-lg border-0">
-                        <div class="card-header bg-dark text-white fw-bold"><i class="fas fa-cogs me-2 text-info"></i> ศูนย์ควบคุมระบบร้านค้า (Dynamic Settings)</div>
-                        <div class="card-body p-4 p-md-5">
-                            <form onsubmit="saveAdvancedSettings(event)">
-                                <!-- แถบเลือกหมวดหมู่ -->
-                                <ul class="nav nav-pills mb-4 pb-2 border-bottom" id="settingTabs">
-                                    <li class="nav-item"><a class="nav-link active fw-bold px-4" data-bs-toggle="pill" href="#setPts"><i class="fas fa-coins text-warning me-1"></i> แต้ม & กาชา</a></li>
-                                    <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setShop"><i class="fas fa-truck text-success me-1"></i> ค่าจัดส่ง</a></li>
-                                    <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setContact"><i class="fas fa-headset text-primary me-1"></i> ช่องทางติดต่อ</a></li>
-                                    <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setAi"><i class="fas fa-robot text-danger me-1"></i> AI & หมวดหมู่</a></li>
-                                </ul>
+                        <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-cogs me-2 text-info"></i> ศูนย์ควบคุมระบบร้านค้า (Dynamic Settings)</span>
+                            <button class="btn btn-sm btn-outline-info rounded-pill" onclick="loadSettings()"><i class="fas fa-sync-alt"></i> รีโหลดค่าล่าสุด</button>
+                        </div>
+                        <div class="card-body p-4">
+                            
+                            <ul class="nav nav-pills mb-4 pb-2 border-bottom" id="settingTabs">
+                                <li class="nav-item"><a class="nav-link active fw-bold px-4" data-bs-toggle="pill" href="#setPts"><i class="fas fa-coins text-warning me-1"></i> แต้ม & กาชา</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setShop"><i class="fas fa-truck text-success me-1"></i> ค่าจัดส่ง</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setContact"><i class="fas fa-headset text-primary me-1"></i> ช่องทางติดต่อ</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setAi"><i class="fas fa-robot text-danger me-1"></i> AI & หมวดหมู่</a></li>
+                                <li class="nav-item"><a class="nav-link fw-bold px-4" data-bs-toggle="pill" href="#setTracking"><i class="fas fa-shipping-fast text-info me-1"></i> ข้อความแจ้งเลข</a></li>
+                            </ul>
 
-                                <div class="tab-content mb-5">
-                                    <!-- แท็บ: แต้ม & กาชา -->
-                                    <div class="tab-pane fade show active" id="setPts">
-                                        <div class="row g-4">
-                                            <div class="col-md-4"><label class="form-label fw-bold text-muted">ฐานยอดสั่งซื้อขั้นต่ำ (บาท)</label><input type="number" id="setBase" class="form-control form-control-lg bg-light border-0 shadow-sm" required></div>
-                                            <div class="col-md-4"><label class="form-label fw-bold text-muted">จะได้รับคะแนน (แต้ม)</label><input type="number" id="setRate" class="form-control form-control-lg bg-light border-0 shadow-sm" required></div>
-                                            <div class="col-md-4"><label class="form-label fw-bold text-danger">ค่าสุ่มกาชา 1 ครั้ง (แต้ม)</label><input type="number" id="setGacha" class="form-control form-control-lg border-danger text-danger fw-bold shadow-sm" required></div>
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="setPts">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-muted small">ฐานยอดสั่งซื้อขั้นต่ำ (บาท)</label>
+                                            <input type="number" id="setBase" class="form-control form-control-lg bg-light border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-muted small">จะได้รับคะแนน (แต้ม)</label>
+                                            <input type="number" id="setRate" class="form-control form-control-lg bg-light border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label fw-bold text-danger small">ค่าสุ่มกาชา 1 ครั้ง (แต้ม)</label>
+                                            <input type="number" id="setGacha" class="form-control form-control-lg border-danger text-danger fw-bold shadow-sm">
                                         </div>
                                     </div>
-                                    
-                                    <!-- แท็บ: ค่าจัดส่ง -->
-                                    <div class="tab-pane fade" id="setShop">
-                                        <div class="row g-4">
-                                            <div class="col-md-3"><label class="form-label fw-bold text-muted">โอนปกติ (฿)</label><input type="number" id="setShipEms" class="form-control bg-light border-0 shadow-sm" placeholder="40" required></div>
-                                            <div class="col-md-3"><label class="form-label fw-bold text-muted">เก็บปลายทาง COD (฿)</label><input type="number" id="setShipCod" class="form-control bg-light border-0 shadow-sm" placeholder="50" required></div>
-                                            <div class="col-md-3"><label class="form-label fw-bold text-muted">บวกพื้นที่ห่างไกล (+฿)</label><input type="number" id="setShipRemote" class="form-control bg-light border-0 shadow-sm" placeholder="20" required></div>
-                                            <div class="col-md-3"><label class="form-label fw-bold text-success">ยอดสั่งซื้อส่งฟรี (฿)</label><input type="number" id="setFreeShipLimit" class="form-control border-success text-success fw-bold shadow-sm" placeholder="300" required></div>
-                                        </div>
-                                    </div>
-
-                                    <!-- แท็บ: ช่องทางติดต่อ -->
-                                    <div class="tab-pane fade" id="setContact">
-                                        <div class="row g-4">
-                                            <div class="col-md-6"><label class="form-label fw-bold text-muted"><i class="fas fa-phone-alt"></i> เบอร์โทรศัพท์</label><input type="text" id="setContactPhone" class="form-control bg-light border-0 shadow-sm" placeholder="064-xxx-xxxx"></div>
-                                            <div class="col-md-6"><label class="form-label fw-bold text-success"><i class="fab fa-line"></i> LINE URL</label><input type="text" id="setContactLine" class="form-control bg-light border-0 shadow-sm" placeholder="https://lin.ee/..."></div>
-                                            <div class="col-md-6"><label class="form-label fw-bold text-primary"><i class="fab fa-facebook"></i> Facebook URL</label><input type="text" id="setContactFb" class="form-control bg-light border-0 shadow-sm" placeholder="https://www.facebook.com/..."></div>
-                                            <div class="col-md-6"><label class="form-label fw-bold text-dark"><i class="fab fa-tiktok"></i> TikTok URL</label><input type="text" id="setContactTiktok" class="form-control bg-light border-0 shadow-sm" placeholder="https://www.tiktok.com/@..."></div>
-                                        </div>
-                                    </div>
-
-                                    <!-- แท็บ: AI & หมวดหมู่ -->
-                                    <div class="tab-pane fade" id="setAi">
-                                        <div class="row g-4 mb-3">
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold text-primary"><i class="fas fa-brain"></i> เลือกรุ่นโมเดล AI (Chat & Scanner)</label>
-                                                <select id="setAiModel" class="form-select border-primary shadow-sm">
-                                                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (เสถียร ประมวลผลไว)</option>
-                                                    <option value="gemini-2.5-flash">Gemini 2.5 Flash (วิเคราะห์เชิงลึก แม่นยำขึ้น)</option>
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <label class="form-label fw-bold text-muted"><i class="fas fa-tags"></i> หมวดหมู่สินค้า (คั่นด้วยลูกน้ำ ,)</label>
-                                                <input type="text" id="setCategories" class="form-control bg-light border-0 shadow-sm" placeholder="เช่น รถญี่ปุ่น, รถยุโรป, การ์ดเกม, ฟิกเกอร์">
-                                                <small class="text-danger">* AI จะใช้อ้างอิงเพื่อจัดหมวดหมู่อัตโนมัติเวลาสแกนภาพ</small>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label class="form-label fw-bold text-info"><i class="fas fa-chalkboard-teacher"></i> ชุดคำสั่งสอน AI (System Prompt)</label>
-                                            <textarea id="setAiPrompt" class="form-control bg-light border-0 shadow-sm" rows="5" placeholder="พิมพ์คู่มือ กฎกติกา หรือพฤติกรรมการตอบกลับให้ AI เรียนรู้ที่นี่..."></textarea>
-                                        </div>
-                                    </div>
+                                    <button class="btn btn-warning fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('points')">
+                                        <i class="fas fa-save me-1"></i> บันทึกค่าแต้มและกาชา
+                                    </button>
                                 </div>
                                 
-                                <button type="submit" class="btn btn-dark w-100 py-3 fw-bold rounded-pill shadow-lg fs-5" id="advSetSaveBtn">
-                                    <i class="fas fa-save me-2 text-warning"></i> บันทึกการตั้งค่าทั้งหมดเข้าระบบ
-                                </button>
-                            </form>
+                                <div class="tab-pane fade" id="setShop">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-3"><label class="form-label fw-bold text-muted small">โอนปกติ (฿)</label><input type="number" id="setShipEms" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-3"><label class="form-label fw-bold text-muted small">เก็บปลายทาง COD (฿)</label><input type="number" id="setShipCod" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-3"><label class="form-label fw-bold text-muted small">บวกพื้นที่ห่างไกล (+฿)</label><input type="number" id="setShipRemote" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-3"><label class="form-label fw-bold text-success small">ยอดสั่งซื้อส่งฟรี (฿)</label><input type="number" id="setFreeShipLimit" class="form-control border-success text-success fw-bold shadow-sm"></div>
+                                    </div>
+                                    <button class="btn btn-success fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('shipping')">
+                                        <i class="fas fa-save me-1"></i> บันทึกค่าจัดส่ง
+                                    </button>
+                                </div>
+
+                                <div class="tab-pane fade" id="setContact">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-6"><label class="form-label fw-bold text-muted small">เบอร์โทรศัพท์</label><input type="text" id="setContactPhone" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold text-success small">LINE URL</label><input type="text" id="setContactLine" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold text-primary small">Facebook URL</label><input type="text" id="setContactFb" class="form-control bg-light border-0 shadow-sm"></div>
+                                        <div class="col-md-6"><label class="form-label fw-bold text-dark small">TikTok URL</label><input type="text" id="setContactTiktok" class="form-control bg-light border-0 shadow-sm"></div>
+                                    </div>
+                                    <button class="btn btn-primary fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('contact')">
+                                        <i class="fas fa-save me-1"></i> บันทึกช่องทางติดต่อ
+                                    </button>
+                                </div>
+
+                                <div class="tab-pane fade" id="setAi">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-primary small">รุ่นโมเดล AI (Gemini)</label>
+                                            <select id="setAiModel" class="form-select border-primary shadow-sm">
+                                                <option value="gemini-1.5-flash">Gemini 1.5 Flash (ไว)</option>
+                                                <option value="gemini-2.5-flash">Gemini 2.5 Flash (แม่นยำ)</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label fw-bold text-muted small">หมวดหมู่สินค้า (คั่นด้วย , )</label>
+                                            <input type="text" id="setCategories" class="form-control bg-light border-0 shadow-sm">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">ชุดคำสั่งสอน AI (System Prompt)</label>
+                                            <textarea id="setAiPrompt" class="form-control bg-light border-0 shadow-sm" rows="6"></textarea>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-danger fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('ai')">
+                                        <i class="fas fa-save me-1"></i> บันทึกตั้งค่า AI & หมวดหมู่
+                                    </button>
+                                </div>
+
+                                <div class="tab-pane fade" id="setTracking">
+                                    <div class="row g-4 mb-4">
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">หัวข้อประกาศ (บรรทัดแรก)</label>
+                                            <input type="text" id="setTrackingHeader" class="form-control bg-light border-0 shadow-sm" placeholder='เช่น 📦 แจ้งเลขพัสดุ "บ้านรถของเล่น"'>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">URL เว็บไซต์ (ที่จะแสดงท้ายบิล)</label>
+                                            <input type="text" id="setTrackingUrl" class="form-control bg-light border-0 shadow-sm" placeholder="https://...">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">ข้อความแจ้งสิทธิพิเศษ/เงื่อนไข</label>
+                                            <textarea id="setTrackingBenefit" class="form-control bg-light border-0 shadow-sm" rows="5" placeholder="🎉 สิทธิพิเศษสำหรับลูกค้า..."></textarea>
+                                            <small class="text-muted">ส่วนนี้จะแสดงหลังรายการเลขพัสดุ และก่อน URL เว็บไซต์</small>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label fw-bold text-info small">คำลงท้าย</label>
+                                            <input type="text" id="setTrackingFooter" class="form-control bg-light border-0 shadow-sm" placeholder="เช่น ขอบคุณที่อุดหนุนครับ 🙏">
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-info text-white fw-bold px-4 py-2 rounded-pill shadow-sm" onclick="saveSettingsPart('tracking')">
+                                        <i class="fas fa-save me-1"></i> บันทึกเทมเพลตแจ้งเลข
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
