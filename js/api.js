@@ -6,7 +6,7 @@
 const REWARD_API_URL = "https://script.google.com/macros/s/AKfycbyjyaHQZY37rJnc_jdgYhto5J3kkwHAn0kng2TKljm568VRC8K46AUZjwg-6-fevSacBA/exec"; 
 
 // ⚠️ 2. URL ระบบร้านค้าอัจฉริยะ (อันใหม่ที่คุณเพิ่งทำ)
-const SHOP_API_URL = "https://script.google.com/macros/s/AKfycbxZVAA2xaIqF1mYiOJeZmiORN14SGUtf5apDv_UG0QMvXhrbFvmKFEm8xXa1z1gpcqr3Q/exec"; 
+const SHOP_API_URL = "https://script.google.com/macros/s/AKfycbzr-qQ2oenX34y5dcLexW211Lh8MTvOfthj15ab1m2_y2eRhtnpAVCFv7_ViqVppU2J6Q/exec"; 
 
 const API = {
     // --- ท่อส่งข้อมูลที่ 1: สำหรับระบบสะสมแต้ม/กาชา (Reward System) ---

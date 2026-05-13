@@ -1,5 +1,5 @@
 // ==========================================
-// 🛒 Module: Shop System (อัปเกรด: แสดงตัวกรองหมวดหมู่ครบ 100%)
+// 🛒 Module: Shop System (อัปเกรด: Modal Pop-up & ระบบตัวเลือกสินค้า)
 // ==========================================
 
 let shopCart = JSON.parse(localStorage.getItem('shopCart')) || [];
@@ -17,10 +17,9 @@ function saveCart() {
     if(typeof updateNav === 'function') updateNav(); 
 }
 
-// 🎯 1. ฟังก์ชันกรองข้อมูลขั้นสูง (รวม 3 เงื่อนไข)
+// 🎯 1. ฟังก์ชันตัวกรอง
 window.applyAdvancedFilter = function() {
     currentShopPage = 1;
-    
     filteredShopProducts = allShopProducts.filter(p => {
         const stock = parseInt(p.stock) || 0;
         let matchStock = true;
@@ -40,7 +39,6 @@ window.applyAdvancedFilter = function() {
     });
 
     if (currentStockStatus === 'instock') filteredShopProducts.sort(() => Math.random() - 0.5);
-
     renderShopPage();
 }
 
@@ -49,14 +47,13 @@ window.setCategory = function(cat) { currentCategory = cat; applyAdvancedFilter(
 window.setPriceRange = function(range) { currentPriceRange = range; applyAdvancedFilter(); }
 window.changeShopPage = function(page) { currentShopPage = page; renderShopPage(); window.scrollTo({ top: 0, behavior: 'smooth' }); }
 
-// 🛍️ 3. เรนเดอร์หน้าร้านค้า
+// 🛍️ 2. เรนเดอร์หน้าร้านค้า
 window.renderShopPage = async function() {
     const container = document.getElementById('app-content');
     
     if (allShopProducts.length === 0) {
         container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-success" style="width: 3rem; height: 3rem;"></div><p class="mt-2">กำลังเปิดร้านค้า...</p></div>';
         
-        // 💡 โหลด Settings จากระบบหลัก เพื่อดึงหมวดหมู่ทั้งหมดที่คุณลูกค้าตั้งค่าไว้
         const setRes = await API.get('getSettings');
         if (setRes.status === 'success' && setRes.data.categories) {
             window.shopGlobalCategories = setRes.data.categories.split(",").map(c => c.trim()).filter(c => c);
@@ -73,7 +70,6 @@ window.renderShopPage = async function() {
         }
     }
     
-    // 💡 นำหมวดหมู่ที่ตั้งค่าไว้ มารวมกับหมวดหมู่ในสินค้า เผื่อมีตกหล่น
     const existingCats = allShopProducts.map(p => p.category).filter(c => c);
     const combinedCats = [...new Set([...(window.shopGlobalCategories || []), ...existingCats])];
     const categories = ['all', ...combinedCats];
@@ -125,28 +121,36 @@ window.renderShopPage = async function() {
         currentItems.forEach(p => {
             let stock = parseInt(p.stock) || 0;
             let imgUrl = p.image && p.image.trim() !== '' ? p.image : 'https://placehold.co/400x400/eeeeee/31343C?text=No+Image';
-            let inCart = shopCart.find(i => i.id === p.id);
-            let qtyInCart = inCart ? inCart.qty : 0;
-            let remainStock = stock - qtyInCart;
+            
+            // 💡 เช็คว่าสินค้ามีตัวเลือกไหม
+            let hasVariants = p.variants && p.variants.trim() !== "";
+            let btnClass = hasVariants ? 'primary' : 'success';
+            let btnIcon = hasVariants ? 'fa-list' : 'fa-search';
+            let btnText = hasVariants ? 'เลือกแบบสินค้า' : 'ดูรายละเอียด';
+            
+            // เช็คสต็อก (นับรวมทุกตัวเลือกว่าหยิบไปเท่าไหร่แล้ว)
+            let currentTotalQty = shopCart.filter(i => i.id === p.id).reduce((sum, i) => sum + i.qty, 0);
+            let remainStock = stock - currentTotalQty;
             let disableBtn = remainStock <= 0;
 
+            // 💡 ปรับให้คลิกที่รูปภาพ หรือ ปุ่ม ก็จะเปิด Pop-up เหมือนกันทั้งหมด เพื่อความพรีเมียม
             html += `
             <div class="col-6 col-md-4 col-lg-3 mb-2">
-                <div class="card product-card h-100 shadow-sm border-0 ${disableBtn ? 'opacity-75' : ''}" style="border-radius: 20px; overflow: hidden;">
+                <div class="card product-card h-100 shadow-sm border-0 ${disableBtn ? 'opacity-75' : ''}" style="border-radius: 20px; overflow: hidden; transition: transform 0.2s;">
                     <div class="position-absolute top-0 start-0 m-2" style="z-index: 5;">
                         <span class="badge bg-dark rounded-pill" style="font-size: 0.6rem;">${p.sku}</span>
                     </div>
-                    <img src="${imgUrl}" class="card-img-top" style="height:160px; object-fit:cover; cursor:zoom-in;" onclick="showImageModal(this.src)" onerror="this.src='https://placehold.co/400x400/eeeeee/31343C?text=Error'">
+                    <img src="${imgUrl}" class="card-img-top" style="height:160px; object-fit:cover; cursor:pointer;" onclick="openProductDetailModal('${p.id}')" onerror="this.src='https://placehold.co/400x400/eeeeee/31343C?text=Error'">
                     <div class="card-body p-2 p-md-3 d-flex flex-column">
                         <span class="badge bg-info text-dark mb-1 align-self-start" style="font-size: 0.65rem;">${p.category}</span>
-                        <h6 class="fw-bold text-dark mb-2 text-truncate small">${p.name}</h6>
+                        <h6 class="fw-bold text-dark mb-2 text-truncate small" style="cursor:pointer;" onclick="openProductDetailModal('${p.id}')">${p.name}</h6>
                         <div class="text-center mt-auto mb-2">
                             <h5 class="text-success fw-bold mb-0">฿${p.retail_price}</h5>
                             <small class="text-muted" style="font-size:0.7rem;">${disableBtn ? (stock <= 0 ? '❌ หมด' : 'เต็มโควตา') : `✅ สต็อก: ${stock}`}</small>
                         </div>
-                        <button class="btn btn-${disableBtn ? 'secondary' : 'success'} w-100 py-2 fw-bold rounded-pill shadow-sm btn-sm" 
-                            onclick="addToCart('${p.id}', '${p.sku}', '${p.name.replace(/'/g, "\\'")}', ${p.retail_price}, ${stock}, '${imgUrl}')" ${disableBtn ? 'disabled' : ''}>
-                            <i class="fas fa-cart-plus me-1"></i> ${disableBtn ? 'หมด' : 'ใส่ตะกร้า'}
+                        <button class="btn btn-${disableBtn ? 'secondary' : btnClass} w-100 py-2 fw-bold rounded-pill shadow-sm btn-sm" 
+                            onclick="openProductDetailModal('${p.id}')" ${disableBtn && stock <= 0 ? 'disabled' : ''}>
+                            <i class="fas ${btnIcon} me-1"></i> ${disableBtn && stock <= 0 ? 'หมด' : btnText}
                         </button>
                     </div>
                 </div>
@@ -175,20 +179,117 @@ window.renderShopPage = async function() {
     container.innerHTML = html;
 }
 
-window.addToCart = function(id, sku, name, price, maxStock, img) {
-    let item = shopCart.find(i => i.id === id); 
-    if (item) {
-        if (item.qty + 1 > maxStock) return Swal.fire('เตือน', 'สั่งเกินจำนวนสต็อกที่มีไม่ได้ครับ', 'warning');
-        item.qty++;
-    } else {
-        if (maxStock < 1) return Swal.fire('เตือน', 'สินค้าหมด', 'warning');
-        shopCart.push({ id, sku, name, price, qty: 1, maxStock, img });
+// 🌟 3. พระเอกของเรา: ฟังก์ชัน Modal Pop-up แสดงรายละเอียดสินค้าและตัวเลือก
+window.openProductDetailModal = function(id) {
+    let p = allShopProducts.find(x => x.id === id);
+    if(!p) return;
+    
+    let imgUrl = p.image && p.image.trim() !== '' ? p.image : 'https://placehold.co/400x400/eeeeee/31343C?text=No+Image';
+    let stock = parseInt(p.stock) || 0;
+    
+    // เช็คว่าเคยหยิบลงตะกร้าไปแล้วกี่ชิ้น (รวมทุกสี)
+    let currentTotalQty = shopCart.filter(i => i.id === p.id).reduce((sum, i) => sum + i.qty, 0);
+    let remainStock = stock - currentTotalQty;
+    
+    let hasVariants = p.variants && p.variants.trim() !== "";
+    let variantHtml = '';
+    
+    if(hasVariants) {
+        let vList = p.variants.split(',').map(v => v.trim()).filter(v => v);
+        variantHtml = `
+            <div class="mb-3 text-start">
+                <label class="fw-bold text-dark mb-2"><i class="fas fa-layer-group text-warning me-1"></i> รูปแบบ/ตัวเลือก:</label>
+                <select id="swal-variant" class="form-select border-primary shadow-sm fw-bold text-primary">
+                    <option value="">-- กรุณาเลือก --</option>
+                    ${vList.map(v => `<option value="${v}">${v}</option>`).join('')}
+                </select>
+            </div>`;
     }
+
+    Swal.fire({
+        html: `
+            <div class="container-fluid text-start px-0 mt-2">
+                <div class="row">
+                    <div class="col-12 col-md-5 text-center mb-3 mb-md-0">
+                        <img src="${imgUrl}" class="img-fluid rounded-4 shadow-sm border" style="max-height: 280px; object-fit: contain; width: 100%;">
+                    </div>
+                    <div class="col-12 col-md-7 d-flex flex-column">
+                        <span class="badge bg-info text-dark align-self-start mb-2">${p.category}</span>
+                        <h4 class="fw-bold text-dark mb-1">${p.name}</h4>
+                        <p class="text-muted small mb-3">รหัส: ${p.sku}</p>
+                        <h3 class="text-success fw-bold mb-3">฿${p.retail_price}</h3>
+                        
+                        <div class="bg-light p-3 rounded-4 mb-3 small text-muted" style="max-height: 120px; overflow-y: auto; line-height: 1.6;">
+                            ${p.desc ? p.desc.replace(/\n/g, '<br>') : 'ไม่มีรายละเอียดสินค้า'}
+                        </div>
+                        
+                        ${variantHtml}
+
+                        <div class="mb-2 text-start">
+                            <label class="fw-bold text-dark mb-2">ระบุจำนวน:</label>
+                            <div class="d-flex align-items-center">
+                                <button class="btn btn-outline-secondary rounded-circle fw-bold shadow-sm" style="width:38px;height:38px;" onclick="document.getElementById('swal-qty').stepDown()">-</button>
+                                <input type="number" id="swal-qty" class="form-control text-center mx-2 fw-bold shadow-sm border-secondary" style="width: 80px;" value="1" min="1" max="${remainStock}" readonly>
+                                <button class="btn btn-outline-secondary rounded-circle fw-bold shadow-sm" style="width:38px;height:38px;" onclick="document.getElementById('swal-qty').stepUp()">+</button>
+                            </div>
+                            <small class="text-muted mt-2 d-block">📦 มีสินค้าพร้อมสั่งได้อีก <strong class="text-dark">${remainStock}</strong> ชิ้น</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `,
+        width: '750px',
+        showCancelButton: true,
+        confirmButtonText: remainStock > 0 ? '<i class="fas fa-cart-plus me-1"></i> เพิ่มลงตะกร้า' : 'สินค้าหมดโควตา',
+        cancelButtonText: 'ปิดหน้าต่าง',
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#6c757d',
+        focusConfirm: false,
+        showConfirmButton: remainStock > 0,
+        preConfirm: () => {
+            let selectedVar = "";
+            if(hasVariants) {
+                selectedVar = document.getElementById('swal-variant').value;
+                if(!selectedVar) {
+                    Swal.showValidationMessage('กรุณาเลือกรูปแบบ/ตัวเลือก ก่อนครับ');
+                    return false;
+                }
+            }
+            let qty = parseInt(document.getElementById('swal-qty').value) || 1;
+            return { variant: selectedVar, qty: qty };
+        }
+    }).then((result) => {
+        if(result.isConfirmed) {
+            addToCart(p.id, p.sku, p.name, p.retail_price, stock, imgUrl, result.value.variant, result.value.qty);
+        }
+    });
+}
+
+// 🛒 4. ระบบเพิ่มลงตะกร้าแบบแยกตัวเลือก
+window.addToCart = function(id, sku, name, price, maxStock, img, variant = '', addQty = 1) {
+    // 💡 สร้าง ID เฉพาะในตะกร้า (เช่น P123-สีแดง กับ P123-สีดำ ถือว่าเป็นคนละชิ้นในตะกร้า)
+    let cartItemId = variant ? `${id}-${variant}` : id;
+    
+    // หาสินค้าตัวนี้ในตะกร้า (เอาแบบสีตรงกันเป๊ะ)
+    let item = shopCart.find(i => i.cartItemId === cartItemId || (!i.cartItemId && i.id === id && !i.variant)); 
+    
+    // นับจำนวนรวมของสินค้านี้ทุกสีที่อยู่ในตะกร้าแล้ว
+    let currentTotalQty = shopCart.filter(i => i.id === id).reduce((sum, i) => sum + i.qty, 0);
+    
+    if (item) {
+        if (currentTotalQty + addQty > maxStock) return Swal.fire('เตือน', 'สั่งเกินจำนวนสต็อกที่มี (รวมทุกตัวเลือก) ไม่ได้ครับ', 'warning');
+        item.qty += addQty;
+    } else {
+        if (currentTotalQty + addQty > maxStock) return Swal.fire('เตือน', 'สั่งเกินจำนวนสต็อกที่มี (รวมทุกตัวเลือก) ไม่ได้ครับ', 'warning');
+        shopCart.push({ cartItemId: cartItemId, id: id, sku: sku, name: name, price: price, qty: addQty, maxStock: maxStock, img: img, variant: variant });
+    }
+    
     saveCart();
     Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 1500}).fire({icon: 'success', title: 'เพิ่มลงตะกร้าแล้ว'});
     renderShopPage(); 
 }
 
+// 📦 5. แสดงหน้าตะกร้าสินค้า (เพิ่มป้ายแจ้งสี/ขนาด)
 window.renderCartPage = function() {
     if(!currentUser) return openAuth('login');
     const container = document.getElementById('app-content');
@@ -196,17 +297,23 @@ window.renderCartPage = function() {
         container.innerHTML = `<div class="text-center py-5 mt-5"><i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i><h4 class="text-muted">ตะกร้าของคุณยังว่างเปล่า</h4><button class="btn btn-success rounded-pill mt-3 px-4 fw-bold shadow-sm" onclick="showPage('shop')">ไปช้อปปิ้งกันเลย</button></div>`;
         return;
     }
+    
     let total = 0;
     let html = `<h3 class="fw-bold mb-4 text-success"><i class="fas fa-shopping-cart me-2"></i> ตะกร้าสินค้าของคุณ</h3><div class="row"><div class="col-lg-8">`;
+    
     shopCart.forEach((item, index) => {
         let subtotal = item.price * item.qty; total += subtotal;
         let finalImage = item.img || item.image || 'https://placehold.co/400x400/eeeeee/31343C?text=No+Image';
+        
+        // 💡 โชว์ป้ายเหลืองบอกสี/ตัวเลือก ในตะกร้า
+        let variantBadge = item.variant ? `<span class="badge bg-warning text-dark ms-2 shadow-sm border border-white">${item.variant}</span>` : '';
+        
         html += `
         <div class="card shadow-sm border-0 rounded-4 mb-3">
             <div class="card-body p-3 d-flex align-items-center flex-wrap">
-                <img src="${finalImage}" onerror="this.src='https://placehold.co/400x400/eeeeee/31343C?text=No+Image'" style="width: 60px; height: 60px; object-fit: cover; border-radius: 10px;" class="me-3 shadow-sm border">
+                <img src="${finalImage}" onerror="this.src='https://placehold.co/400x400/eeeeee/31343C?text=No+Image'" style="width: 65px; height: 65px; object-fit: cover; border-radius: 10px;" class="me-3 shadow-sm border">
                 <div class="flex-grow-1 me-3">
-                    <h6 class="fw-bold mb-0">${item.name}</h6>
+                    <h6 class="fw-bold mb-1">${item.name}${variantBadge}</h6>
                     <div class="text-success fw-bold">฿${item.price}</div>
                 </div>
                 <div class="d-flex align-items-center me-3 bg-light rounded-pill p-1 border">
@@ -218,6 +325,7 @@ window.renderCartPage = function() {
             </div>
         </div>`;
     });
+    
     let isFreeShip = total >= 300;
     html += `</div><div class="col-lg-4">
         <div class="card shadow-sm border-0 rounded-4 sticky-top" style="top: 80px;">
@@ -237,7 +345,13 @@ window.updateCartQty = function(index, change) {
     if(change === 'delete') { shopCart.splice(index, 1); } 
     else {
         let item = shopCart[index];
+        // 💡 เช็คสต็อกรวมทุกสีว่าเกินโควตาไหม
+        let currentTotalQty = shopCart.filter(i => i.id === item.id).reduce((sum, i) => sum + i.qty, 0);
         let newQty = item.qty + change;
+        
+        if (change > 0 && currentTotalQty + 1 > item.maxStock) {
+            return Swal.fire('เตือน', 'สั่งเกินโควตาสต็อกรวมของสินค้านี้แล้วค่ะ', 'warning');
+        }
         if(newQty > 0 && newQty <= item.maxStock) item.qty = newQty;
     }
     saveCart(); renderCartPage();
@@ -318,12 +432,20 @@ window.updateCheckoutTotal = function(total, isFreeShip) {
     document.getElementById('finalTotalDisplay').innerText = '฿' + finalTotal.toLocaleString('en-US');
 }
 
+// 💡 6. โค้ดส่งใบสั่งซื้อ พร้อมส่งข้อมูลตัวเลือก (Variants) ไปด้วย
 window.checkoutShop = async function(total, payMethod, isRemote, slipBase64, transferTime) {
     Swal.fire({title: 'กำลังบันทึกออเดอร์...', allowOutsideClick: false, didOpen: () => Swal.showLoading()});
-    const payload = { action: 'checkoutShop', phone: currentUser.phone, name: currentUser.name || currentUser.fname, payMethod: payMethod, isRemote: isRemote, slipBase64: slipBase64, transferTime: transferTime, items: shopCart.map(i => ({id: i.id, sku: i.sku, qty: i.qty})) };
+    
+    const payload = { 
+        action: 'checkoutShop', phone: currentUser.phone, name: currentUser.name || currentUser.fname, 
+        payMethod: payMethod, isRemote: isRemote, slipBase64: slipBase64, transferTime: transferTime, 
+        // 💡 ส่ง variant ไปกับบิลด้วย แอดมินจะได้จัดของถูกสี
+        items: shopCart.map(i => ({id: i.id, sku: i.sku, qty: i.qty, variant: i.variant || ''})) 
+    };
+    
     const res = await API.shopPost(payload);
     if(res.status === 'success') {
         shopCart = []; saveCart(); 
-        Swal.fire({ title: 'สั่งซื้อสำเร็จ!', text: 'เราได้รับคำสั่งซื้อของคุณแล้ว', icon: 'success' }).then(() => { showPage('dashboard'); });
+        Swal.fire({ title: 'สั่งซื้อสำเร็จ!', text: 'เราได้รับคำสั่งซื้อของคุณแล้ว สามารถเช็คออเดอร์ได้ที่หน้าบัญชี', icon: 'success' }).then(() => { showPage('dashboard'); });
     } else { Swal.fire('ขออภัย', res.message, 'error'); }
 }
