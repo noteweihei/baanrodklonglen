@@ -10,6 +10,15 @@ window.loadUsers = async function() {
     if (res.status === "success") { 
         appState.userTable = res.data.filter((u) => u.role !== "admin"); 
         renderTable("userTable"); 
+        
+        // 💡 อัปเดตรายชื่อลูกค้าในช่องค้นหา (เผื่อแอดมินเพิ่งสร้างลูกค้าใหม่)
+        if(document.getElementById('moUserList')) {
+            let uHtml = '';
+            appState.userTable.forEach(u => { 
+                uHtml += `<option value="${u.phone} - ${u.fname || u.name}"></option>`; 
+            });
+            document.getElementById('moUserList').innerHTML = uHtml;
+        }
     } 
 }
 
@@ -98,12 +107,11 @@ window.saveSettingsPart = async function(part) {
 // ✏️ 4. ระบบจัดการสมาชิก (เพิ่มใหม่ / แก้ไข)
 // ==========================================
 
-// 💡 4.1 เปิด Modal เพื่อ "เพิ่มสมาชิกใหม่"
 window.openAddUserModal = function() {
-    document.getElementById('uRow').value = ""; // เคลียร์ช่อง Row เพื่อบอกให้ระบบรู้ว่านี่คือคนใหม่
+    document.getElementById('uRow').value = ""; 
     document.getElementById('uPhone').value = "";
-    document.getElementById('uPhone').readOnly = false; // ปลดล็อกให้พิมพ์เบอร์โทรได้
-    document.getElementById('uPassword').value = "1234"; // รหัสผ่านตั้งต้น
+    document.getElementById('uPhone').readOnly = false; 
+    document.getElementById('uPassword').value = "1234"; 
     document.getElementById('uFName').value = "";
     document.getElementById('uLName').value = "";
     document.getElementById('uAddress').value = "";
@@ -115,18 +123,19 @@ window.openAddUserModal = function() {
     
     document.getElementById('uSaveBtn').innerHTML = '<i class="fas fa-user-plus me-1"></i> เพิ่มสมาชิกลงระบบ';
     
-    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    const el = document.getElementById('userModal');
+    let modal = bootstrap.Modal.getInstance(el);
+    if (!modal) modal = new bootstrap.Modal(el);
     modal.show();
 }
 
-// 💡 4.2 เปิด Modal เพื่อ "แก้ไขข้อมูลสมาชิกเดิม"
 window.openEditUserByPhone = function(phone) { 
     const u = appState.userTable.find(x => String(x.phone).trim() === String(phone).trim());
     if(!u) return Swal.fire('ผิดพลาด', 'ไม่พบข้อมูลสมาชิกรหัสนี้', 'error');
     
     document.getElementById('uRow').value = u.rowIndex; 
     document.getElementById('uPhone').value = u.phone; 
-    document.getElementById('uPhone').readOnly = true; // ล็อกไม่ให้แก้เบอร์โทร
+    document.getElementById('uPhone').readOnly = true; 
     document.getElementById('uPassword').value = u.password || ''; 
     document.getElementById('uFName').value = u.fname || u.name || ''; 
     document.getElementById('uLName').value = u.lname || ''; 
@@ -139,16 +148,17 @@ window.openEditUserByPhone = function(phone) {
     
     document.getElementById('uSaveBtn').innerHTML = '<i class="fas fa-save me-1"></i> บันทึกการแก้ไข';
     
-    const modal = new bootstrap.Modal(document.getElementById('userModal'));
+    const el = document.getElementById('userModal');
+    let modal = bootstrap.Modal.getInstance(el);
+    if (!modal) modal = new bootstrap.Modal(el);
     modal.show();
 }
 
-// 💡 4.3 ฟังก์ชันบันทึกข้อมูล (ฉลาดขึ้น แยกออกว่า Add หรือ Edit)
 window.saveUserEdit = async function(e) {
     e.preventDefault(); 
     
     const rowIndex = document.getElementById("uRow").value;
-    const action = rowIndex === "" ? "addUser" : "editUserDetail"; // เช็คจาก uRow ว่าว่างหรือไม่
+    const action = rowIndex === "" ? "addUser" : "editUserDetail"; 
     
     const btn = document.getElementById("uSaveBtn"); 
     const originalText = btn.innerHTML;
@@ -173,10 +183,9 @@ window.saveUserEdit = async function(e) {
     const res = await API.post(payload);
     
     if(res.status === 'success') { 
-        // ปิด Modal
-        const modalEl = document.getElementById('userModal');
-        const modalInstance = bootstrap.Modal.getInstance(modalEl);
-        if (modalInstance) modalInstance.hide();
+        const el = document.getElementById('userModal');
+        const modal = bootstrap.Modal.getInstance(el);
+        if (modal) modal.hide();
         
         loadUsers(); 
         Swal.fire('สำเร็จ', rowIndex === "" ? 'เพิ่มสมาชิกเข้าระบบเรียบร้อย' : 'บันทึกข้อมูลเรียบร้อย', 'success'); 
@@ -188,7 +197,6 @@ window.saveUserEdit = async function(e) {
     btn.disabled = false;
 }
 
-// 🚫 4.4 แบนสมาชิก
 window.banUser = async function(phone, currentStatus, rowIndex) {
     const newStatus = currentStatus === 'Banned' ? 'Active' : 'Banned';
     const confirmMsg = newStatus === 'Banned' ? `ต้องการแบนเบอร์ ${phone} ถาวรใช่หรือไม่?` : `ต้องการปลดแบนเบอร์ ${phone} ใช่หรือไม่?`;
@@ -356,4 +364,185 @@ window.compressImage = function(file, maxWidth = 1200) {
         };
         reader.onerror = error => reject(error);
     });
+}
+
+// ==========================================
+// 🛒 6. ระบบสร้างออเดอร์แมนนวล (อัปเกรด Datalist Search)
+// ==========================================
+let moItemsList = [];
+let moAvailableProducts = [];
+
+window.openManualOrderModal = async function() {
+    moItemsList = [];
+    if(document.getElementById('moShipping')) document.getElementById('moShipping').value = 0;
+    if(document.getElementById('moDiscount')) document.getElementById('moDiscount').value = 0;
+    
+    // ล้างค่าช่องค้นหา
+    if(document.getElementById('moUserSearch')) document.getElementById('moUserSearch').value = '';
+    if(document.getElementById('moProductSearch')) document.getElementById('moProductSearch').value = '';
+    calcManualTotal();
+    
+    const el = document.getElementById('manualOrderModal');
+    let modal = bootstrap.Modal.getInstance(el);
+    if (!modal) modal = new bootstrap.Modal(el);
+    modal.show();
+
+    // 1. โหลดรายชื่อลูกค้ามาใส่ Datalist (ค้นหาอัจฉริยะ)
+    if(!appState.userTable || appState.userTable.length === 0) await loadUsers();
+    if(document.getElementById('moUserList')) {
+        let uHtml = '';
+        appState.userTable.forEach(u => { 
+            uHtml += `<option value="${u.phone} - ${u.fname || u.name}"></option>`; 
+        });
+        document.getElementById('moUserList').innerHTML = uHtml;
+    }
+
+    // 2. โหลดรายชื่อสินค้ามาใส่ Datalist (ค้นหาอัจฉริยะ)
+    const res = await API.post({action: 'getShopProductsForAdmin'});
+    if(res.status === 'success') {
+        moAvailableProducts = res.data;
+        if(document.getElementById('moProductList')) {
+            let pHtml = '';
+            moAvailableProducts.forEach(p => {
+                if(p.stock > 0) {
+                    pHtml += `<option value="[${p.sku || p.id}] ${p.name} (฿${p.price})"></option>`;
+                }
+            });
+            document.getElementById('moProductList').innerHTML = pHtml;
+        }
+    }
+}
+
+// 🛒 เพิ่มสินค้าลงตะกร้าด้วยการค้นหา Text (Datalist)
+window.addManualOrderItem = function() {
+    const searchVal = document.getElementById('moProductSearch').value.trim();
+    const qty = parseInt(document.getElementById('moQty').value) || 1;
+    
+    if(!searchVal) return Swal.fire('เตือน', 'กรุณาพิมพ์ค้นหาและเลือกสินค้า', 'warning');
+    
+    // ค้นหาสินค้าจาก text ที่พิมพ์ ว่าตรงกับแพตเทิร์น [SKU] Name (฿Price) ในระบบไหม
+    const prod = moAvailableProducts.find(p => `[${p.sku || p.id}] ${p.name} (฿${p.price})` === searchVal);
+    
+    if(!prod) return Swal.fire('เตือน', 'ไม่พบสินค้านี้ หรือสินค้าหมด กรุณาเลือกจากรายการที่มีให้', 'error');
+
+    let exist = moItemsList.find(x => x.id === prod.id);
+    if(exist) {
+        if(exist.qty + qty > prod.stock) return Swal.fire('เตือน', 'สต็อกไม่พอ', 'warning');
+        exist.qty += qty;
+    } else {
+        if(qty > prod.stock) return Swal.fire('เตือน', 'สต็อกไม่พอ', 'warning');
+        moItemsList.push({ id: prod.id, sku: prod.sku, name: prod.name, price: prod.price, qty: qty });
+    }
+    
+    // รีเซ็ตช่องค้นหาหลังกดเพิ่ม
+    document.getElementById('moProductSearch').value = '';
+    document.getElementById('moQty').value = 1;
+    calcManualTotal();
+}
+
+// ➕➖ ปุ่มเพิ่ม/ลดจำนวนสินค้าในตาราง
+window.updateManualItemQty = function(index, change) {
+    let item = moItemsList[index];
+    let prod = moAvailableProducts.find(x => x.id === item.id);
+    
+    let newQty = item.qty + change;
+    if (newQty > 0) {
+        if (prod && newQty > prod.stock) {
+            Swal.fire('เตือน', 'สั่งเกินจำนวนสต็อกที่มีครับ', 'warning');
+        } else {
+            item.qty = newQty;
+        }
+    }
+    calcManualTotal();
+}
+
+// 🗑️ ลบสินค้าออกจากออเดอร์
+window.removeManualOrderItem = function(index) {
+    moItemsList.splice(index, 1);
+    calcManualTotal();
+}
+
+// 🎨 ฟังก์ชันคำนวณและวาดตาราง
+window.calcManualTotal = function() {
+    let total = 0;
+    let html = '';
+    if(moItemsList.length === 0) {
+        html = '<tr><td colspan="5" class="text-center text-muted py-4">ยังไม่ได้เลือกสินค้า</td></tr>';
+    } else {
+        moItemsList.forEach((item, index) => {
+            let sub = item.price * item.qty;
+            total += sub;
+            
+            html += `<tr>
+                <td class="align-middle" style="max-width: 140px;">
+                    <div class="fw-bold"><span class="badge bg-dark mb-1 px-2 py-1">${item.sku || 'ไม่มีรหัส'}</span></div>
+                    <div class="small text-muted text-truncate w-100" style="display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;" title="${item.name}">${item.name}</div>
+                </td>
+                <td class="align-middle fw-bold text-secondary">฿${item.price}</td>
+                <td class="align-middle text-center" style="min-width: 95px;">
+                    <div class="d-inline-flex align-items-center bg-white border rounded-pill p-1 shadow-sm">
+                        <button type="button" class="btn btn-sm text-danger border-0 rounded-circle fw-bold" style="width: 25px; height: 25px; padding: 0;" onclick="updateManualItemQty(${index}, -1)">-</button>
+                        <span class="fw-bold mx-2" style="font-size: 0.95rem;">${item.qty}</span>
+                        <button type="button" class="btn btn-sm text-success border-0 rounded-circle fw-bold" style="width: 25px; height: 25px; padding: 0;" onclick="updateManualItemQty(${index}, 1)">+</button>
+                    </div>
+                </td>
+                <td class="align-middle text-success fw-bold">฿${sub}</td>
+                <td class="align-middle text-center">
+                    <button type="button" class="btn btn-sm btn-danger rounded-circle shadow-sm" style="width: 32px; height: 32px; padding: 0;" onclick="removeManualOrderItem(${index})">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+    }
+    if(document.getElementById('moItemsTable')) document.getElementById('moItemsTable').innerHTML = html;
+
+    let ship = document.getElementById('moShipping') ? parseFloat(document.getElementById('moShipping').value) || 0 : 0;
+    let disc = document.getElementById('moDiscount') ? parseFloat(document.getElementById('moDiscount').value) || 0 : 0;
+    let finalTotal = total + ship - disc;
+    if(document.getElementById('moTotal')) document.getElementById('moTotal').value = finalTotal < 0 ? 0 : finalTotal;
+}
+
+// 💾 บันทึกออเดอร์
+window.saveManualOrder = async function(e) {
+    e.preventDefault();
+    
+    // ดึงและเช็คเบอร์โทรลูกค้าจากช่องค้นหา Datalist
+    const userSearchVal = document.getElementById('moUserSearch').value.trim();
+    if(!userSearchVal) return Swal.fire('เตือน', 'กรุณาพิมพ์ค้นหา/เลือกลูกค้า', 'warning');
+    
+    // ตัดเอาเฉพาะเบอร์โทร (ก่อนหน้าเครื่องหมาย - )
+    const phoneMatch = userSearchVal.split(' - ')[0].trim();
+    const userExists = appState.userTable.find(u => u.phone === phoneMatch);
+    
+    if(!userExists) return Swal.fire('เตือน', 'ไม่พบลูกค้ารายนี้ในระบบ กรุณากดปุ่ม "เพิ่มลูกค้าใหม่" ก่อนค่ะ', 'warning');
+    if(moItemsList.length === 0) return Swal.fire('เตือน', 'กรุณาเพิ่มสินค้าอย่างน้อย 1 รายการ', 'warning');
+    
+    const btn = document.getElementById('moSaveBtn');
+    if(!btn) return;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> บันทึก...';
+    btn.disabled = true;
+
+    const payload = {
+        action: 'createManualOrder',
+        phone: phoneMatch, // 💡 ส่งเฉพาะเบอร์โทรไปหลังบ้าน
+        items: moItemsList,
+        shipping: document.getElementById('moShipping').value,
+        discount: document.getElementById('moDiscount').value,
+        payMethod: document.getElementById('moPayMethod').value
+    };
+
+    const res = await API.post(payload);
+    if(res.status === 'success') {
+        const el = document.getElementById('manualOrderModal');
+        const modal = bootstrap.Modal.getInstance(el);
+        if (modal) modal.hide();
+        
+        Swal.fire('สำเร็จ', 'สร้างออเดอร์แมนนวลเรียบร้อย!', 'success');
+        if(typeof loadShopOrders === 'function') loadShopOrders();
+    } else {
+        Swal.fire('ผิดพลาด', res.message || 'ไม่สามารถสร้างออเดอร์ได้', 'error');
+    }
+    btn.innerHTML = '<i class="fas fa-save me-1"></i> บันทึกออเดอร์';
+    btn.disabled = false;
 }

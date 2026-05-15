@@ -348,6 +348,83 @@
         </div>
     </div>
 
+    <div class="modal fade" id="manualOrderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header bg-info text-white border-0 rounded-top-4">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-cart-plus me-2"></i> สร้างออเดอร์ร้านค้า (แมนนวล)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4 bg-light">
+                    <form onsubmit="saveManualOrder(event)">
+                        
+                        <div class="bg-white p-3 rounded-3 shadow-sm mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bold text-primary mb-0">1. ค้นหา/เลือกลูกค้า <span class="text-danger">*</span></label>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold" onclick="openAddUserModal()">
+                                    <i class="fas fa-user-plus"></i> เพิ่มลูกค้าใหม่
+                                </button>
+                            </div>
+                            <input type="text" id="moUserSearch" class="form-control border-primary" list="moUserList" placeholder="พิมพ์เบอร์โทร หรือ ชื่อลูกค้า..." autocomplete="off" required>
+                            <datalist id="moUserList"></datalist>
+                            <small class="text-muted mt-1 d-block"><i class="fas fa-info-circle"></i> พิมพ์เพื่อค้นหา และคลิกเลือกจากรายการที่แสดง</small>
+                        </div>
+                        
+                        <div class="bg-white p-3 rounded-3 shadow-sm mb-3">
+                            <label class="form-label fw-bold text-success">2. ค้นหาสินค้า <span class="text-danger">*</span></label>
+                            <div class="d-flex gap-2 mb-2">
+                                <input type="text" id="moProductSearch" class="form-control border-success" list="moProductList" placeholder="พิมพ์ชื่อสินค้า หรือ รหัส SKU..." autocomplete="off">
+                                <datalist id="moProductList"></datalist>
+                                
+                                <input type="number" id="moQty" class="form-control text-center" style="width: 70px;" value="1" min="1">
+                                <button type="button" class="btn btn-success fw-bold px-3 shadow-sm" onclick="addManualOrderItem()">เพิ่ม</button>
+                            </div>
+                            <div class="table-responsive border rounded-3 mt-3">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light"><tr><th>สินค้า</th><th width="80">ราคา</th><th width="90" class="text-center">จำนวน</th><th width="80">รวม</th><th width="40" class="text-center">ลบ</th></tr></thead>
+                                    <tbody id="moItemsTable"><tr><td colspan="5" class="text-center text-muted py-4">ยังไม่ได้เลือกสินค้า</td></tr></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-3 rounded-3 shadow-sm">
+                            <label class="form-label fw-bold text-warning">3. สรุปยอดชำระเงิน</label>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-4 text-end text-muted small fw-bold">ค่าจัดส่ง (฿):</div>
+                                <div class="col-8"><input type="number" id="moShipping" class="form-control form-control-sm" value="0" min="0" onchange="calcManualTotal()"></div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-4 text-end text-muted small fw-bold">ส่วนลด (฿):</div>
+                                <div class="col-8"><input type="number" id="moDiscount" class="form-control form-control-sm" value="0" min="0" onchange="calcManualTotal()"></div>
+                            </div>
+                            <div class="row g-2 align-items-center mb-2">
+                                <div class="col-4 text-end text-dark fw-bold">ยอดสุทธิ (฿):</div>
+                                <div class="col-8"><input type="text" id="moTotal" class="form-control fw-bold text-success bg-light" value="0" readonly></div>
+                            </div>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-4 text-end text-muted small fw-bold">วิธีชำระเงิน:</div>
+                                <div class="col-8">
+                                    <select id="moPayMethod" class="form-select form-select-sm">
+                                        <option value="เงินสด/โอนตรง">เงินสด / โอนตรง</option>
+                                        <option value="COD">เก็บเงินปลายทาง (COD)</option>
+                                        <option value="เครดิต">เครดิต / ค้างชำระ</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-4 pt-3 border-top">
+                            <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button type="submit" class="btn btn-info text-white px-4 rounded-pill fw-bold shadow-sm" id="moSaveBtn">
+                                <i class="fas fa-save me-1"></i> บันทึกออเดอร์
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/api.js"></script>
     
