@@ -90,7 +90,7 @@
                 <div class="tab-pane fade" id="shopOrdersTab">
                     <div class="card border-primary border-top border-4">
                         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
-                            <span class="text-primary fw-bold"><i class="fas fa-shopping-basket me-2"></i> ออเดอร์สั่งซื้อจากหน้าร้านค้า</span>
+                            <span class="text-primary fw-bold"><i class="fas fa-shopping-basket me-2"></i> ออเดอร์สั่งซื้อรอจัดส่ง</span>
                             <div>
                                 <button class="btn btn-info text-white btn-sm me-2 fw-bold shadow-sm" onclick="openManualOrderModal()">
                                     <i class="fas fa-plus me-1"></i> สร้างออเดอร์ (แมนนวล)
@@ -150,7 +150,10 @@
                             <div id="trackingResultArea" class="d-none border-top pt-4">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <h6 class="fw-bold mb-0">📋 สกัดข้อมูลสำเร็จ (<span id="trackCount" class="text-info">0</span> รายการ)</h6>
-                                    <button class="btn btn-warning btn-sm fw-bold rounded-pill px-4 shadow-sm" onclick="copyTrackingToClipboard()"><i class="fas fa-copy me-2"></i> คัดลอกส่งไลน์</button>
+                                    <div>
+                                        <button class="btn btn-success btn-sm fw-bold rounded-pill px-3 shadow-sm me-2" onclick="saveTrackingToDB()" id="saveTrackingBtn"><i class="fas fa-save me-1"></i> บันทึกเข้าระบบอัตโนมัติ</button>
+                                        <button class="btn btn-warning btn-sm fw-bold rounded-pill px-3 shadow-sm" onclick="copyTrackingToClipboard()"><i class="fas fa-copy me-1"></i> คัดลอกส่งไลน์</button>
+                                    </div>
                                 </div>
                                 <div class="table-responsive border rounded-4 border-light">
                                     <table class="table mb-0 align-middle">
@@ -164,6 +167,21 @@
                 </div>
 
                 <div class="tab-pane fade" id="historyTab">
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card border-primary border-top border-4">
+                                <div class="card-header"><span class="text-primary fw-bold"><i class="fas fa-box-open"></i> ประวัติออเดอร์ร้านค้า (จัดส่งแล้ว)</span></div>
+                                <div class="card-body table-responsive">
+                                    <table class="table align-middle">
+                                        <thead class="table-light"><tr><th>วันที่/รหัส</th><th>ลูกค้า</th><th>รายการสินค้า</th><th>ยอดรวม</th><th>เลขพัสดุ (กดเพื่อติดตาม)</th><th>สถานะ</th></tr></thead>
+                                        <tbody id="historyShopOrdersTable"></tbody>
+                                    </table>
+                                    <div id="page-historyShopOrdersTable"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row"><div class="col-xl-6"><div class="card"><div class="card-header"><span class="text-secondary"><i class="fas fa-history me-2"></i> ประวัติเติมแต้ม</span></div><div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>วันที่</th><th>ID/ช่องทาง</th><th>ลูกค้า</th><th>ยอด/แต้ม</th><th>สถานะ</th></tr></thead><tbody id="historyOrdersTable"></tbody></table><div id="page-historyOrdersTable"></div></div></div></div>
                     <div class="col-xl-6"><div class="card"><div class="card-header"><span class="text-secondary"><i class="fas fa-gift me-2"></i> ประวัติแลกของ</span></div><div class="card-body table-responsive"><table class="table align-middle"><thead><tr><th>วันที่</th><th>สินค้า</th><th>ลูกค้า</th><th>สถานะ</th><th>หมายเหตุ</th></tr></thead><tbody id="historyRedeemsTable"></tbody></table><div id="page-historyRedeemsTable"></div></div></div></div></div>
                 </div>
@@ -268,9 +286,7 @@
     </div>
 
     <div class="modal fade" id="productModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow-lg"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold text-success">📦 จัดการสินค้าปกติ</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form id="productForm" onsubmit="saveProduct(event)"><input type="hidden" id="pRow" /><label class="small text-muted fw-bold">ชื่อสินค้า</label><input type="text" id="pName" class="form-control bg-light border-0 mb-3 text-dark" required /><div class="row"><div class="col-6"><label class="small text-muted fw-bold">แต้มที่ใช้แลก</label><input type="number" id="pPoints" class="form-control bg-light border-0 mb-3 text-primary fw-bold" required /></div><div class="col-6"><label class="small text-muted fw-bold">สต็อกเริ่มต้น</label><input type="number" id="pStock" class="form-control bg-light border-0 mb-3 fw-bold text-dark" required /></div></div><label class="small text-muted fw-bold">รายละเอียด</label><textarea id="pDesc" class="form-control bg-light border-0 mb-3 text-dark" rows="3"></textarea><label class="small text-muted fw-bold">รูปภาพ</label><input type="file" id="pFile" class="form-control mb-2" accept="image/*" /><small class="text-danger d-none mb-4 d-block" id="pEditHint">* ไม่เปลี่ยนรูป ไม่ต้องอัปโหลดใหม่</small><button type="submit" class="btn btn-success w-100 py-2 fw-bold rounded-pill" id="pSaveBtn">💾 บันทึกสินค้า</button></form></div></div></div></div>
-    
     <div class="modal fade" id="gachaModal"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0 rounded-4 shadow-lg"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold text-danger">🃏 จัดการการ์ดรางวัล (Gacha)</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><form id="gachaForm" onsubmit="saveGacha(event)"><input type="hidden" id="gRow"><label class="small text-muted fw-bold">ชื่อรางวัล / ชื่อการ์ด</label><input type="text" id="gName" class="form-control bg-light border-0 mb-3 text-dark" required><div class="row"><div class="col-6"><label class="small text-muted fw-bold">ประเภท</label><select id="gType" class="form-select bg-light border-0 mb-3 text-dark" required onchange="toggleGachaType()"><option value="Product">🎁 ของรางวัล</option><option value="Points">🪙 คืนแต้มโบนัส</option></select></div><div class="col-6"><label class="small text-muted fw-bold">หมวดหมู่ความแรร์</label><select id="gCategory" class="form-select bg-light border-0 mb-3 text-dark" required><option value="รถแรร์">🌟 รถแรร์</option><option value="รถหัวในลัง">📦 รถหัวในลัง</option><option value="รถทั่วไป">🚗 รถทั่วไป</option><option value="การ์ดแรร์">🃏 การ์ดแรร์</option><option value="การ์ดเกลือ">🧂 การ์ดเกลือ</option></select></div></div><div id="gValueDiv"><label id="gValueLabel" class="small text-muted fw-bold">รหัสอ้างอิง (สินค้า)</label><input type="text" id="gValue" class="form-control bg-light border-0 mb-3 text-dark" required></div><div class="row"><div class="col-6"><label class="small text-muted fw-bold">สต็อกในตู้</label><input type="number" id="gStock" class="form-control bg-light border-0 mb-3 fw-bold text-dark" required></div><div class="col-6"><label class="small text-muted fw-bold text-primary">โอกาสออก (Rate %)</label><input type="number" step="0.01" id="gRate" class="form-control border-primary mb-3 fw-bold text-primary bg-white" required></div></div><div id="gImageDiv"><label class="small text-muted fw-bold">รูปภาพการ์ด</label><input type="file" id="gFile" class="form-control mb-1" accept="image/*"><small class="text-danger d-none mb-3 d-block" id="gEditHint">* ไม่เปลี่ยนรูป ไม่ต้องอัปโหลดใหม่</small></div><div id="gPitySetup" class="mt-2 mb-4 p-3 border border-danger rounded-4 bg-danger bg-opacity-10 d-none"><div class="form-check form-switch mb-2"><input class="form-check-input" type="checkbox" id="gIsPity" onchange="document.getElementById('gPityCountDiv').classList.toggle('d-none', !this.checked)"><label class="form-check-label fw-bold text-danger">🎯 เปิดระบบการันตี (Pity)</label></div><div id="gPityCountDiv" class="d-none"><label class="small text-dark fw-bold">บังคับแตกเมื่อสุ่มครบ (ครั้ง)</label><input type="number" id="gPityCount" class="form-control border-danger mt-1 bg-white text-dark"></div></div><div id="gPointsHint" class="alert alert-warning small d-none mb-4 border-0">✨ ระบบจะสร้างรูปให้เอง</div><button type="submit" class="btn btn-danger w-100 py-2 fw-bold rounded-pill" id="gSaveBtn">💾 บันทึกการ์ดเข้าตู้</button></form></div></div></div></div>
-    
     <div class="modal fade" id="rejectModal"><div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 rounded-4 shadow"><div class="modal-header bg-danger text-white border-0"><h5 class="modal-title fw-bold">❌ ปฏิเสธรายการ</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-4"><input type="hidden" id="rejType" /><input type="hidden" id="rejId" /><label class="fw-bold mb-2">โปรดระบุเหตุผล:</label><textarea id="rejRemark" class="form-control bg-light border-0 mb-4 text-dark" rows="3" required></textarea><button class="btn btn-danger w-100 py-2 fw-bold rounded-pill" id="rejSaveBtn" onclick="submitReject()">ยืนยันการปฏิเสธ</button></div></div></div></div>
     
     <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
@@ -283,65 +299,26 @@
                 <div class="modal-body p-4 bg-light">
                     <form id="editUserForm" onsubmit="saveUserEdit(event)">
                         <input type="hidden" id="uRow"> 
-                        
                         <div class="row g-3 bg-white p-3 rounded-3 shadow-sm mb-3">
                             <div class="col-12 mb-2"><h6 class="fw-bold text-dark border-bottom pb-2"><i class="fas fa-sign-in-alt me-2 text-primary"></i>ข้อมูลการเข้าสู่ระบบ</h6></div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">เบอร์โทรศัพท์ (Login ID) <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control border-primary" id="uPhone" required placeholder="เช่น 0812345678">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">รหัสผ่าน (Password) <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="uPassword" required placeholder="ค่าเริ่มต้นคือ 1234">
-                            </div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">เบอร์โทรศัพท์ (Login ID) <span class="text-danger">*</span></label><input type="text" class="form-control border-primary" id="uPhone" required placeholder="เช่น 0812345678"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">รหัสผ่าน (Password) <span class="text-danger">*</span></label><input type="text" class="form-control" id="uPassword" required placeholder="ค่าเริ่มต้นคือ 1234"></div>
                         </div>
-
                         <div class="row g-3 bg-white p-3 rounded-3 shadow-sm mb-3">
                             <div class="col-12 mb-2"><h6 class="fw-bold text-dark border-bottom pb-2"><i class="fas fa-address-card me-2 text-primary"></i>ข้อมูลส่วนตัวและการจัดส่ง</h6></div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">ชื่อ <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="uFName" required placeholder="ชื่อจริง">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">นามสกุล</label>
-                                <input type="text" class="form-control" id="uLName" placeholder="นามสกุล (ถ้ามี)">
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label fw-bold small text-muted">ที่อยู่ (บ้านเลขที่, ซอย, ถนน)</label>
-                                <input type="text" class="form-control" id="uAddress" placeholder="รายละเอียดที่อยู่">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">ตำบล / แขวง</label>
-                                <input type="text" class="form-control" id="uSubDistrict">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">อำเภอ / เขต</label>
-                                <input type="text" class="form-control" id="uDistrict">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">จังหวัด</label>
-                                <input type="text" class="form-control" id="uProvince">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold small text-muted">รหัสไปรษณีย์</label>
-                                <input type="text" class="form-control" id="uZip">
-                            </div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">ชื่อ <span class="text-danger">*</span></label><input type="text" class="form-control" id="uFName" required placeholder="ชื่อจริง"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">นามสกุล</label><input type="text" class="form-control" id="uLName" placeholder="นามสกุล (ถ้ามี)"></div>
+                            <div class="col-12"><label class="form-label fw-bold small text-muted">ที่อยู่ (บ้านเลขที่, ซอย, ถนน)</label><input type="text" class="form-control" id="uAddress" placeholder="รายละเอียดที่อยู่"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">ตำบล / แขวง</label><input type="text" class="form-control" id="uSubDistrict"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">อำเภอ / เขต</label><input type="text" class="form-control" id="uDistrict"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">จังหวัด</label><input type="text" class="form-control" id="uProvince"></div>
+                            <div class="col-md-6"><label class="form-label fw-bold small text-muted">รหัสไปรษณีย์</label><input type="text" class="form-control" id="uZip"></div>
                         </div>
-
                         <div class="row g-3 bg-white p-3 rounded-3 shadow-sm">
                             <div class="col-12 mb-2"><h6 class="fw-bold text-dark border-bottom pb-2"><i class="fas fa-coins me-2 text-warning"></i>คะแนนสะสม</h6></div>
-                            <div class="col-md-12">
-                                <label class="form-label fw-bold small text-primary">แต้มคงเหลือปัจจุบัน</label>
-                                <input type="number" step="0.01" class="form-control border-warning bg-light fw-bold" id="uPoints" min="0" placeholder="0">
-                            </div>
+                            <div class="col-md-12"><label class="form-label fw-bold small text-primary">แต้มคงเหลือปัจจุบัน</label><input type="number" step="0.01" class="form-control border-warning bg-light fw-bold" id="uPoints" min="0" placeholder="0"></div>
                         </div>
-                        
-                        <div class="text-end mt-4 pt-3 border-top">
-                            <button type="button" class="btn btn-secondary px-4 rounded-pill fw-bold" data-bs-dismiss="modal">ยกเลิก</button>
-                            <button type="submit" class="btn btn-primary px-4 rounded-pill fw-bold shadow-sm" id="uSaveBtn">
-                                <i class="fas fa-save me-1"></i> บันทึกข้อมูล
-                            </button>
-                        </div>
+                        <div class="text-end mt-4 pt-3 border-top"><button type="button" class="btn btn-secondary px-4 rounded-pill fw-bold" data-bs-dismiss="modal">ยกเลิก</button><button type="submit" class="btn btn-primary px-4 rounded-pill fw-bold shadow-sm" id="uSaveBtn"><i class="fas fa-save me-1"></i> บันทึกข้อมูล</button></div>
                     </form>
                 </div>
             </div>
@@ -357,17 +334,13 @@
                 </div>
                 <div class="modal-body p-4 bg-light">
                     <form onsubmit="saveManualOrder(event)">
-                        
                         <div class="bg-white p-3 rounded-3 shadow-sm mb-3">
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <label class="form-label fw-bold text-primary mb-0">1. ค้นหา/เลือกลูกค้า <span class="text-danger">*</span></label>
-                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold" onclick="openAddUserModal()">
-                                    <i class="fas fa-user-plus"></i> เพิ่มลูกค้าใหม่
-                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill fw-bold" onclick="openAddUserModal()"><i class="fas fa-user-plus"></i> เพิ่มลูกค้าใหม่</button>
                             </div>
                             <input type="text" id="moUserSearch" class="form-control border-primary" list="moUserList" placeholder="พิมพ์เบอร์โทร หรือ ชื่อลูกค้า..." autocomplete="off" required>
                             <datalist id="moUserList"></datalist>
-                            <small class="text-muted mt-1 d-block"><i class="fas fa-info-circle"></i> พิมพ์เพื่อค้นหา และคลิกเลือกจากรายการที่แสดง</small>
                         </div>
                         
                         <div class="bg-white p-3 rounded-3 shadow-sm mb-3">
@@ -375,50 +348,23 @@
                             <div class="d-flex gap-2 mb-2">
                                 <input type="text" id="moProductSearch" class="form-control border-success" list="moProductList" placeholder="พิมพ์ชื่อสินค้า หรือ รหัส SKU..." autocomplete="off">
                                 <datalist id="moProductList"></datalist>
-                                
                                 <input type="number" id="moQty" class="form-control text-center" style="width: 70px;" value="1" min="1">
                                 <button type="button" class="btn btn-success fw-bold px-3 shadow-sm" onclick="addManualOrderItem()">เพิ่ม</button>
                             </div>
                             <div class="table-responsive border rounded-3 mt-3">
-                                <table class="table table-sm align-middle mb-0">
-                                    <thead class="table-light"><tr><th>สินค้า</th><th width="80">ราคา</th><th width="90" class="text-center">จำนวน</th><th width="80">รวม</th><th width="40" class="text-center">ลบ</th></tr></thead>
-                                    <tbody id="moItemsTable"><tr><td colspan="5" class="text-center text-muted py-4">ยังไม่ได้เลือกสินค้า</td></tr></tbody>
-                                </table>
+                                <table class="table table-sm align-middle mb-0"><thead class="table-light"><tr><th>สินค้า</th><th width="80">ราคา</th><th width="90" class="text-center">จำนวน</th><th width="80">รวม</th><th width="40" class="text-center">ลบ</th></tr></thead><tbody id="moItemsTable"><tr><td colspan="5" class="text-center text-muted py-4">ยังไม่ได้เลือกสินค้า</td></tr></tbody></table>
                             </div>
                         </div>
 
                         <div class="bg-white p-3 rounded-3 shadow-sm">
                             <label class="form-label fw-bold text-warning">3. สรุปยอดชำระเงิน</label>
-                            <div class="row g-2 align-items-center mb-2">
-                                <div class="col-4 text-end text-muted small fw-bold">ค่าจัดส่ง (฿):</div>
-                                <div class="col-8"><input type="number" id="moShipping" class="form-control form-control-sm" value="0" min="0" onchange="calcManualTotal()"></div>
-                            </div>
-                            <div class="row g-2 align-items-center mb-2">
-                                <div class="col-4 text-end text-muted small fw-bold">ส่วนลด (฿):</div>
-                                <div class="col-8"><input type="number" id="moDiscount" class="form-control form-control-sm" value="0" min="0" onchange="calcManualTotal()"></div>
-                            </div>
-                            <div class="row g-2 align-items-center mb-2">
-                                <div class="col-4 text-end text-dark fw-bold">ยอดสุทธิ (฿):</div>
-                                <div class="col-8"><input type="text" id="moTotal" class="form-control fw-bold text-success bg-light" value="0" readonly></div>
-                            </div>
-                            <div class="row g-2 align-items-center">
-                                <div class="col-4 text-end text-muted small fw-bold">วิธีชำระเงิน:</div>
-                                <div class="col-8">
-                                    <select id="moPayMethod" class="form-select form-select-sm">
-                                        <option value="เงินสด/โอนตรง">เงินสด / โอนตรง</option>
-                                        <option value="COD">เก็บเงินปลายทาง (COD)</option>
-                                        <option value="เครดิต">เครดิต / ค้างชำระ</option>
-                                    </select>
-                                </div>
-                            </div>
+                            <div class="row g-2 align-items-center mb-2"><div class="col-4 text-end text-muted small fw-bold">ค่าจัดส่ง (฿):</div><div class="col-8"><input type="number" id="moShipping" class="form-control form-control-sm" value="0" min="0" onchange="calcManualTotal()"></div></div>
+                            <div class="row g-2 align-items-center mb-2"><div class="col-4 text-end text-muted small fw-bold">ส่วนลด (฿):</div><div class="col-8"><input type="number" id="moDiscount" class="form-control form-control-sm" value="0" min="0" onchange="calcManualTotal()"></div></div>
+                            <div class="row g-2 align-items-center mb-2"><div class="col-4 text-end text-dark fw-bold">ยอดสุทธิ (฿):</div><div class="col-8"><input type="text" id="moTotal" class="form-control fw-bold text-success bg-light" value="0" readonly></div></div>
+                            <div class="row g-2 align-items-center"><div class="col-4 text-end text-muted small fw-bold">วิธีชำระเงิน:</div><div class="col-8"><select id="moPayMethod" class="form-select form-select-sm"><option value="เงินสด/โอนตรง">เงินสด / โอนตรง</option><option value="COD">เก็บเงินปลายทาง (COD)</option><option value="เครดิต">เครดิต / ค้างชำระ</option></select></div></div>
                         </div>
 
-                        <div class="text-end mt-4 pt-3 border-top">
-                            <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">ยกเลิก</button>
-                            <button type="submit" class="btn btn-info text-white px-4 rounded-pill fw-bold shadow-sm" id="moSaveBtn">
-                                <i class="fas fa-save me-1"></i> บันทึกออเดอร์
-                            </button>
-                        </div>
+                        <div class="text-end mt-4 pt-3 border-top"><button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">ยกเลิก</button><button type="submit" class="btn btn-info text-white px-4 rounded-pill fw-bold shadow-sm" id="moSaveBtn"><i class="fas fa-save me-1"></i> บันทึกออเดอร์</button></div>
                     </form>
                 </div>
             </div>

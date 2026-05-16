@@ -1,37 +1,16 @@
 // ==========================================
 // ⚙️ ระบบหลังบ้าน: ฐานข้อมูลหลัก (Main DB - Full System)
-// จัดการ: สมาชิก, สะสมแต้ม, ของรางวัล, กาชา, แดชบอร์ด, AI Scanner
+// เชื่อมต่อ Shop DB อัตโนมัติ (ID: 1uMgp7uSYbNozVLW0-KQAcxPivaDlnrlY59xdgzf_VzI)
 // ==========================================
 
-const GEMINI_API_KEY = "AIzaSyCY6HHWGB_VBWTH4sno3Ri_kROq7x61Ejk"; 
+const GEMINI_API_KEY = "AIzaSyAEg1qob83v9rYglYyOXuqQAfjDt6VRetc"; 
+const SHOP_DB_ID = "1uMgp7uSYbNozVLW0-KQAcxPivaDlnrlY59xdgzf_VzI"; 
 
-// ------------------------------------------
-// 1. ฟังก์ชันตัวช่วย & ความปลอดภัย (Helpers)
-// ------------------------------------------
-function getNowStr() { 
-  return Utilities.formatDate(new Date(), "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss"); 
-}
-
-function cleanStr(val) {
-  if (val == null || val === undefined) return "";
-  return val.toString().replace(/['"<>]/g, "").trim(); 
-}
-
-function logSecurity(user, action, detail) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("SecurityLogs") || ss.insertSheet("SecurityLogs");
-  if (sheet.getLastRow() === 0) sheet.appendRow(["Timestamp", "User/Phone", "Action", "Detail"]);
-  sheet.appendRow([getNowStr(), "'" + cleanStr(user), action, detail]);
-}
-
-// 💡 ฟังก์ชันที่ขาดหายไป เติมกลับมาให้แล้วค่ะ! (สำหรับส่งข้อมูลกลับหน้าเว็บ)
-function outputJson(data) {
-  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
-}
-
-function doOptions(e) { 
-  return ContentService.createTextOutput("").setMimeType(ContentService.MimeType.TEXT); 
-}
+function getNowStr() { return Utilities.formatDate(new Date(), "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss"); }
+function cleanStr(val) { if (val == null || val === undefined) return ""; return val.toString().replace(/['"<>]/g, "").trim(); }
+function logSecurity(user, action, detail) { const ss = SpreadsheetApp.getActiveSpreadsheet(); const sheet = ss.getSheetByName("SecurityLogs") || ss.insertSheet("SecurityLogs"); if (sheet.getLastRow() === 0) sheet.appendRow(["Timestamp", "User/Phone", "Action", "Detail"]); sheet.appendRow([getNowStr(), "'" + cleanStr(user), action, detail]); }
+function outputJson(data) { return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON); }
+function doOptions(e) { return ContentService.createTextOutput("").setMimeType(ContentService.MimeType.TEXT); }
 
 // ------------------------------------------
 // 2. ระบบอ่านข้อมูล (API GET)
@@ -40,7 +19,7 @@ function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const action = e.parameter.action;
   let result = {};
-
+  
   try {
     const uSheet = ss.getSheetByName("Users");
     const uData = uSheet ? uSheet.getDataRange().getDisplayValues() : [];
@@ -65,18 +44,14 @@ function doGet(e) {
       const sheet = ss.getSheetByName("Products");
       const data = sheet ? sheet.getDataRange().getDisplayValues() : [];
       let products = [];
-      for(let i = 1; i < data.length; i++) {
-        products.push({ rowIndex: i+1, id: data[i][0], name: data[i][1], points: data[i][2], image: data[i][3], desc: data[i][4], stock: parseInt(data[i][5] || 0) });
-      }
+      for(let i = 1; i < data.length; i++) { products.push({ rowIndex: i+1, id: data[i][0], name: data[i][1], points: data[i][2], image: data[i][3], desc: data[i][4], stock: parseInt(data[i][5] || 0) }); }
       result = { status: 'success', data: products };
     }
     else if (action === 'getGacha') {
       const sheet = ss.getSheetByName("GachaSettings");
       const data = sheet ? sheet.getDataRange().getValues() : [];
       let gacha = [];
-      for (let i = 1; i < data.length; i++) {
-        gacha.push({ rowIndex: i + 1, id: data[i][0], name: data[i][1], type: data[i][2], value: data[i][3], stock: data[i][4], rate: data[i][5], image: data[i][6], isPity: data[i][7], pityCount: data[i][8], currentSpins: data[i][9], category: data[i][10] || 'ทั่วไป' });
-      }
+      for (let i = 1; i < data.length; i++) { gacha.push({ rowIndex: i + 1, id: data[i][0], name: data[i][1], type: data[i][2], value: data[i][3], stock: data[i][4], rate: data[i][5], image: data[i][6], isPity: data[i][7], pityCount: data[i][8], currentSpins: data[i][9], category: data[i][10] || 'ทั่วไป' }); }
       result = { status: 'success', data: gacha };
     }
     else if (action === 'getOrders') {
@@ -89,37 +64,24 @@ function doGet(e) {
       }
       result = { status: 'success', data: orders };
     }
-
-    // --- 🛒 ดึงข้อมูลออเดอร์จากร้านค้า (Shop Orders) พร้อมรูปสลิป ---
+    // 🚚 อัปเกรด: ดึงเลขพัสดุ (Tracking) จาก Shop DB กลับมาด้วย
     else if (action === 'getShopOrders') {
-      const shopSheet = ss.getSheetByName("Shop_Orders");
-      const sData = shopSheet ? shopSheet.getDataRange().getDisplayValues() : [];
-      let shopOrders = [];
-      
-      for(let i = 1; i < sData.length; i++) {
-        // ค้นหาข้อมูลที่อยู่จาก userMap (ที่ดึงไว้แล้วด้านบน) โดยใช้เบอร์โทร
-        let p = cleanStr(sData[i][2]); // คอลัมน์โทรศัพท์
-        let uInfo = userMap[p] || {};
-        
-        shopOrders.push({
-          rowIndex: i + 1,
-          timestamp: sData[i][0] || '-',
-          orderId: sData[i][1] || '-',
-          phone: p,
-          name: sData[i][3] || uInfo.name || 'ไม่ระบุ',
-          address: uInfo.address || 'ไม่ระบุที่อยู่',
-          zipcode: uInfo.zip || '',
-          detail: sData[i][4] || '-',
-          total: parseFloat(sData[i][5] || 0),
-          status: sData[i][6] || 'Pending',
-          rawJson: sData[i][7] || '[]',
-          // 💡 เพิ่มส่วนนี้: ดึงข้อมูลรูปสลิปจากคอลัมน์ที่ 9 (Index 8)
-          slipBase64: sData[i][8] || '' 
-        });
-      }
-      result = { status: 'success', data: shopOrders.reverse() }; // สลับเอาอันใหม่ขึ้นก่อน
+      try {
+        const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
+        const shopSheet = shopSS.getSheetByName("Shop_Orders");
+        const sData = shopSheet ? shopSheet.getDataRange().getDisplayValues() : [];
+        let shopOrders = [];
+        for(let i = 1; i < sData.length; i++) {
+          let p = cleanStr(sData[i][2]); let uInfo = userMap[p] || {};
+          shopOrders.push({
+            rowIndex: i + 1, timestamp: sData[i][0] || '-', orderId: sData[i][1] || '-',
+            phone: p, name: sData[i][3] || uInfo.name || 'ไม่ระบุ', address: uInfo.address || 'ไม่ระบุที่อยู่', zipcode: uInfo.zip || '',
+            detail: sData[i][4] || '-', total: parseFloat(sData[i][5] || 0), status: sData[i][6] || 'Pending', rawJson: sData[i][7] || '[]', slipBase64: sData[i][8] || '', tracking: sData[i][9] || '' 
+          });
+        }
+        result = { status: 'success', data: shopOrders.reverse() };
+      } catch(err) { result = { status: 'error', message: 'เชื่อมต่อ Shop DB ล้มเหลว: ' + err.message }; }
     }
-
     else if (action === 'getRedemptions') {
       const sheet = ss.getSheetByName("Redemptions");
       const data = sheet ? sheet.getDataRange().getDisplayValues() : [];
@@ -130,19 +92,13 @@ function doGet(e) {
       }
       result = { status: 'success', data: redeems };
     }
-    // (ส่วนนี้อยู่ในฟังก์ชัน doGet นะคะ)
     else if (action === 'getSettings') {
       const sSheet = ss.getSheetByName("Settings");
-      if (!sSheet) {
-          return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: {} })).setMimeType(ContentService.MimeType.JSON);
-      }
+      if (!sSheet) return outputJson({ status: 'success', data: {} });
       const data = sSheet.getDataRange().getValues();
       let settings = {};
-      // 💡 ดึงข้อมูลทั้งหมดในรูปแบบ Key: Value (คอลัมน์ A คือชื่อ, คอลัมน์ B คือค่า)
-      for (let i = 1; i < data.length; i++) {
-        if (data[i][0]) settings[data[i][0]] = data[i][1];
-      }
-      return ContentService.createTextOutput(JSON.stringify({ status: 'success', data: settings })).setMimeType(ContentService.MimeType.JSON);
+      for (let i = 1; i < data.length; i++) { if (data[i][0]) settings[data[i][0]] = data[i][1]; }
+      return outputJson({ status: 'success', data: settings });
     }
     else if (action === 'getLogs') {
       const sheet = ss.getSheetByName("SecurityLogs");
@@ -151,9 +107,7 @@ function doGet(e) {
       for(let i=1; i<data.length; i++) logs.push({ timestamp: data[i][0], user: cleanStr(data[i][1]), action: data[i][2], detail: data[i][3] });
       result = { status: 'success', data: logs };
     }
-    else {
-      result = { status: 'error', message: 'Invalid Action' };
-    }
+    else { result = { status: 'error', message: 'Invalid Action' }; }
   } catch (error) { result = { status: 'error', message: error.toString() }; }
   
   return outputJson(result);
@@ -168,163 +122,93 @@ function doPost(e) {
     const action = body.action;
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // --- 📊 ดึงประวัติผู้ใช้ (ย้ายมาใช้ POST เพื่อความเสถียรและแก้บั๊กคอลัมน์สลับที่) ---
+    // 📱 อัปเกรด: ส่งเลขพัสดุกลับไปให้ลูกค้าโชว์หน้า Dashboard
     if (action === 'getUserHistory') {
       const ph = cleanStr(body.phone);
       const oSheet = ss.getSheetByName("Orders"); const oData = oSheet ? oSheet.getDataRange().getDisplayValues() : [];
       const rSheet = ss.getSheetByName("Redemptions"); const rData = rSheet ? rSheet.getDataRange().getDisplayValues() : [];
-      
       const uSheet = ss.getSheetByName("Users"); const uData = uSheet ? uSheet.getDataRange().getDisplayValues() : [];
       let uInfo = {};
-      for(let j=1; j<uData.length; j++) {
-        if(cleanStr(uData[j][0]) === ph) {
-          uInfo = { phone: ph, name: uData[j][1], address: uData[j][2], zipcode: uData[j][3], points: uData[j][4] }; break;
-        }
-      }
+      for(let j=1; j<uData.length; j++) { if(cleanStr(uData[j][0]) === ph) { uInfo = { phone: ph, name: uData[j][1], address: uData[j][2], zipcode: uData[j][3], points: uData[j][4] }; break; } }
       
-      let now = new Date();
-      let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      let now = new Date(); let nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
       uInfo.expiryDate = Utilities.formatDate(nextMonth, "Asia/Bangkok", "dd/MM/yyyy");
-      
       let uOrders = [], uRedeems = [];
       
-      // 💡 อัปเกรด: อ่านตาราง Orders ให้รองรับทั้งออเดอร์ยุคเก่า และ ยุคใหม่ (ตะกร้าสินค้า)
       for(let i=1; i<oData.length; i++) {
-        let orderPhone = cleanStr(oData[i][1]); // ลองอ่านคอลัมน์ B ก่อน (แบบเก่า)
-        let isNewFormat = false;
-        
-        // ถ้าคอลัมน์ B เป็นรหัส SHOP-... แสดงว่าเป็นออเดอร์แบบใหม่ เบอร์โทรจะอยู่คอลัมน์ D
-        if (orderPhone.startsWith("SHOP-") || cleanStr(oData[i][3]).length >= 9) {
-            orderPhone = cleanStr(oData[i][3]); // อ่านจากคอลัมน์ D
-            isNewFormat = true;
-        }
+        let orderPhone = cleanStr(oData[i][1]); let isNewFormat = false;
+        if (orderPhone.startsWith("SHOP-") || cleanStr(oData[i][3]).length >= 9) { orderPhone = cleanStr(oData[i][3]); isNewFormat = true; }
         
         if(orderPhone === ph) {
-            if (isNewFormat) {
-                // ดึงข้อมูลตามโครงสร้างแบบใหม่ (คอลัมน์สลับที่)
-                uOrders.push({ orderId: cleanStr(oData[i][1]), amount: oData[i][5], channel: oData[i][4], status: oData[i][7], points: oData[i][6], timestamp: oData[i][0] || '-', remark: oData[i][8] || '-' });
-            } else {
-                // ดึงข้อมูลตามโครงสร้างแบบเก่า
-                uOrders.push({ orderId: cleanStr(oData[i][0]), amount: oData[i][2], channel: oData[i][3], status: oData[i][4], points: oData[i][5], timestamp: oData[i][6] || '-', remark: oData[i][7] || '-' });
-            }
+            if (isNewFormat) { uOrders.push({ orderId: cleanStr(oData[i][1]), amount: oData[i][5], channel: oData[i][4], status: oData[i][7], points: oData[i][6], timestamp: oData[i][0] || '-', remark: oData[i][8] || '-', tracking: oData[i][9] || '' }); } 
+            else { uOrders.push({ orderId: cleanStr(oData[i][0]), amount: oData[i][2], channel: oData[i][3], status: oData[i][4], points: oData[i][5], timestamp: oData[i][6] || '-', remark: oData[i][7] || '-', tracking: oData[i][9] || '' }); }
         }
       }
+      for(let i=1; i<rData.length; i++) { if(cleanStr(rData[i][0]) === ph) { uRedeems.push({ rowIndex: i+1, productId: rData[i][1], points: rData[i][2], timestamp: rData[i][3] || '-', status: rData[i][4]||'Pending', remark: rData[i][5]||'-' }); } }
       
-      // ประวัติแลกของรางวัลยังโครงสร้างเดิม
-      for(let i=1; i<rData.length; i++) {
-        if(cleanStr(rData[i][0]) === ph) {
-          uRedeems.push({ rowIndex: i+1, productId: rData[i][1], points: rData[i][2], timestamp: rData[i][3] || '-', status: rData[i][4]||'Pending', remark: rData[i][5]||'-' });
-        }
-      }
-      
-      return ContentService.createTextOutput(JSON.stringify({ status: 'success', orders: uOrders, redeems: uRedeems, userInfo: uInfo })).setMimeType(ContentService.MimeType.JSON);
+      return outputJson({ status: 'success', orders: uOrders, redeems: uRedeems, userInfo: uInfo });
     }
 
-    // --- 👤 หมวดผู้ใช้งาน ---
     if (action === 'login') {
-      const uSheet = ss.getSheetByName("Users"); const data = uSheet.getDataRange().getDisplayValues();
-      const phone = cleanStr(body.phone); const passwordInput = cleanStr(body.password); const userIp = cleanStr(body.ip) || 'ไม่ทราบ IP'; 
+      const uSheet = ss.getSheetByName("Users");
+      const data = uSheet.getDataRange().getDisplayValues();
+      const phone = cleanStr(body.phone); const passwordInput = cleanStr(body.password); const userIp = cleanStr(body.ip) || 'ไม่ทราบ IP';
       for (let i = 1; i < data.length; i++) {
         if (cleanStr(data[i][0]) === phone) {
-          if (data[i][8] === 'Banned') {
-              logSecurity(phone, "LOGIN_FAILED", "บัญชีถูกแบน IP: " + userIp);
-              return outputJson({status: 'error', message: 'บัญชีถูกระงับการใช้งาน'});
-          }
-          if (passwordInput !== cleanStr(data[i][5])) {
-            logSecurity(phone, "LOGIN_FAILED", "รหัสผ่านผิด IP: " + userIp);
-            return outputJson({status: 'error', message: 'รหัสผ่านไม่ถูกต้อง'});
-          }
+          if (data[i][8] === 'Banned') { logSecurity(phone, "LOGIN_FAILED", "บัญชีถูกแบน IP: " + userIp); return outputJson({status: 'error', message: 'บัญชีถูกระงับการใช้งาน'}); }
+          if (passwordInput !== cleanStr(data[i][5])) { logSecurity(phone, "LOGIN_FAILED", "รหัสผ่านผิด IP: " + userIp); return outputJson({status: 'error', message: 'รหัสผ่านไม่ถูกต้อง'}); }
           
           uSheet.getRange(i + 1, 8).setValue(userIp);
           logSecurity(phone, "LOGIN_SUCCESS", "เข้าสู่ระบบ IP: " + userIp);
           
-          const user = {
-            rowIndex: i + 1, phone: phone, name: data[i][1], address: data[i][2], zipcode: data[i][3], points: data[i][4], role: data[i][6], ip: userIp, status: data[i][8],
-            fname: data[i][9]||'', lname: data[i][10]||'', addressLine: data[i][11]||'', subdistrict: data[i][12]||'', district: data[i][13]||'', province: data[i][14]||''
-          };
+          const user = { rowIndex: i + 1, phone: phone, name: data[i][1], address: data[i][2], zipcode: data[i][3], points: data[i][4], role: data[i][6], ip: userIp, status: data[i][8], fname: data[i][9]||'', lname: data[i][10]||'', addressLine: data[i][11]||'', subdistrict: data[i][12]||'', district: data[i][13]||'', province: data[i][14]||'' };
           return outputJson({status: 'success', user: user});
         }
       }
       return outputJson({status: 'error', message: 'ไม่พบเบอร์นี้ในระบบ'});
     }
     else if (action === 'register') {
-      const uSheet = ss.getSheetByName("Users"); const data = uSheet.getDataRange().getDisplayValues();
-      const phone = cleanStr(body.phone); const userIp = cleanStr(body.ip) || 'ไม่ทราบ IP'; 
-      for (let i = 1; i < data.length; i++) {
-        if (cleanStr(data[i][0]) === phone) return outputJson({status: 'error', message: 'เบอร์นี้เป็นสมาชิกแล้ว'});
-      }
+      const uSheet = ss.getSheetByName("Users");
+      const data = uSheet.getDataRange().getDisplayValues();
+      const phone = cleanStr(body.phone); const userIp = cleanStr(body.ip) || 'ไม่ทราบ IP';
+      for (let i = 1; i < data.length; i++) { if (cleanStr(data[i][0]) === phone) return outputJson({status: 'error', message: 'เบอร์นี้เป็นสมาชิกแล้ว'}); }
       const password = cleanStr(body.password), fname = cleanStr(body.fname), lname = cleanStr(body.lname);
       const addrLine = cleanStr(body.addressLine), subdist = cleanStr(body.subdistrict), dist = cleanStr(body.district), prov = cleanStr(body.province), zip = cleanStr(body.zipcode);
       const combinedName = fname + ' ' + lname; const combinedAddress = addrLine + ' ต.' + subdist + ' อ.' + dist + ' จ.' + prov;
-      
       uSheet.appendRow(["'" + phone, combinedName, combinedAddress, zip, 0, "'" + password, "user", userIp, "Active", fname, lname, addrLine, subdist, dist, prov]);
       logSecurity(phone, "REGISTER", "สมัครสมาชิกใหม่ IP: " + userIp);
       return outputJson({status: 'success', user: { phone: phone, name: combinedName, address: combinedAddress, zipcode: zip, points: 0, role: 'user', status: 'Active', fname: fname, lname: lname, addressLine: addrLine, subdistrict: subdist, district: dist, province: prov }});
     }
-    // =========================================
-    // 👥 เพิ่มสมาชิกใหม่โดยแอดมิน (Manual Add)
-    // =========================================
     else if (action === 'addUser') {
       const uSheet = ss.getSheetByName("Users");
       const uData = uSheet.getDataRange().getDisplayValues();
       const phone = cleanStr(body.phone);
-      
-      // 1. เช็คก่อนว่าเบอร์นี้ซ้ำกับในระบบหรือไม่
-      for (let i = 1; i < uData.length; i++) {
-        if (cleanStr(uData[i][0]) === phone) {
-          return outputJson({status: 'error', message: 'เบอร์นี้เป็นสมาชิกอยู่แล้วในระบบค่ะ'});
-        }
-      }
+      for (let i = 1; i < uData.length; i++) { if (cleanStr(uData[i][0]) === phone) { return outputJson({status: 'error', message: 'เบอร์นี้เป็นสมาชิกอยู่แล้วในระบบค่ะ'}); } }
 
-      // 2. เตรียมข้อมูลและรวมชื่อ-ที่อยู่
       const password = cleanStr(body.password) || '1234';
-      const fname = cleanStr(body.fname) || '';
-      const lname = cleanStr(body.lname) || '';
-      const addrLine = cleanStr(body.address) || '';
-      const subdist = cleanStr(body.subdistrict) || '';
-      const dist = cleanStr(body.district) || '';
-      const prov = cleanStr(body.province) || '';
-      const zip = cleanStr(body.zipcode) || '';
-      const points = parseFloat(body.points) || 0;
+      const fname = cleanStr(body.fname) || ''; const lname = cleanStr(body.lname) || '';
+      const addrLine = cleanStr(body.address) || ''; const subdist = cleanStr(body.subdistrict) || '';
+      const dist = cleanStr(body.district) || ''; const prov = cleanStr(body.province) || '';
+      const zip = cleanStr(body.zipcode) || ''; const points = parseFloat(body.points) || 0;
       
       const combinedName = (fname + ' ' + lname).trim(); 
       let combinedAddress = addrLine;
-      if(subdist) combinedAddress += ' ต.' + subdist;
-      if(dist) combinedAddress += ' อ.' + dist;
-      if(prov) combinedAddress += ' จ.' + prov;
+      if(subdist) combinedAddress += ' ต.' + subdist; if(dist) combinedAddress += ' อ.' + dist; if(prov) combinedAddress += ' จ.' + prov;
       combinedAddress = combinedAddress.trim();
 
-      // 3. บันทึกลง Google Sheets (เรียงคอลัมน์ตามโครงสร้างเดิมเป๊ะ)
-      uSheet.appendRow([
-        "'" + phone,           // คอลัมน์ A: เบอร์โทร (ใส่ ' กันเลข 0 หาย)
-        combinedName,          // คอลัมน์ B: ชื่อ-นามสกุลรวม
-        combinedAddress,       // คอลัมน์ C: ที่อยู่รวม
-        zip,                   // คอลัมน์ D: รหัส ปณ.
-        points,                // คอลัมน์ E: แต้มสะสม
-        "'" + password,        // คอลัมน์ F: รหัสผ่าน (ใส่ ' กันเลข 0 หาย)
-        "user",                // คอลัมน์ G: Role
-        "Added by Admin",      // คอลัมน์ H: IP / หมายเหตุ
-        "Active",              // คอลัมน์ I: Status
-        fname,                 // คอลัมน์ J: ชื่อจริง
-        lname,                 // คอลัมน์ K: นามสกุล
-        addrLine,              // คอลัมน์ L: บ้านเลขที่
-        subdist,               // คอลัมน์ M: ตำบล
-        dist,                  // คอลัมน์ N: อำเภอ
-        prov                   // คอลัมน์ O: จังหวัด
-      ]);
-
+      uSheet.appendRow([ "'" + phone, combinedName, combinedAddress, zip, points, "'" + password, "user", "Added by Admin", "Active", fname, lname, addrLine, subdist, dist, prov ]);
       logSecurity("Admin", "ADD_USER", "แอดมินเพิ่มสมาชิกใหม่เบอร์: " + phone);
       return outputJson({status: 'success'});
     }
     else if (action === 'editUserDetail') {
-      const uSheet = ss.getSheetByName("Users"); const row = parseInt(body.rowIndex);
+      const uSheet = ss.getSheetByName("Users");
+      const row = parseInt(body.rowIndex);
       const fname = cleanStr(body.fname), lname = cleanStr(body.lname), addrLine = cleanStr(body.address), subdist = cleanStr(body.subdistrict), dist = cleanStr(body.district), prov = cleanStr(body.province), zip = cleanStr(body.zipcode);
       const combinedName = fname + ' ' + lname; const combinedAddress = addrLine + ' ต.' + subdist + ' อ.' + dist + ' จ.' + prov;
       
       uSheet.getRange(row, 2).setValue(combinedName); uSheet.getRange(row, 3).setValue(combinedAddress); uSheet.getRange(row, 4).setValue(zip); uSheet.getRange(row, 5).setValue(parseFloat(body.points||0));
       if(body.password) uSheet.getRange(row, 6).setValue("'" + cleanStr(body.password));
       uSheet.getRange(row, 10).setValue(fname); uSheet.getRange(row, 11).setValue(lname); uSheet.getRange(row, 12).setValue(addrLine); uSheet.getRange(row, 13).setValue(subdist); uSheet.getRange(row, 14).setValue(dist); uSheet.getRange(row, 15).setValue(prov);
-      
       logSecurity("Admin", "EDIT_USER", "แก้ไขข้อมูลเบอร์: " + body.phone);
       return outputJson({status: 'success'});
     }
@@ -333,126 +217,133 @@ function doPost(e) {
       logSecurity("Admin", body.status === 'Banned' ? "BAN_USER" : "UNBAN_USER", "สถานะเบอร์: " + body.phone);
       return outputJson({status: 'success'});
     }
+
+    // 📦 พระเอกของงาน! บันทึกเลขพัสดุและจับคู่ออเดอร์อัตโนมัติ
+    else if (action === 'saveTrackingNumbers') {
+      const trackingList = body.trackingData; 
+      const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
+      const shopSheet = shopSS.getSheetByName("Shop_Orders");
+      const sData = shopSheet.getDataRange().getDisplayValues();
+      const orderSheet = ss.getSheetByName("Orders");
+      const oData = orderSheet.getDataRange().getDisplayValues();
+
+      let updatedCount = 0;
+
+      for (let track of trackingList) {
+          // ตัดคำขยะเพื่อให้การค้นหาแม่นยำขึ้น
+          let tName = cleanStr(track.name).replace(/คุณ|พี่|น้อง|นาย|นางสาว|นาง/g, '').replace(/\s+/g, '').toLowerCase();
+          let tNum = cleanStr(track.tracking);
+
+          // หาบิลใน Shop_Orders (ค้นจากล่างขึ้นบน เพื่อเจอบิลใหม่ล่าสุดก่อน)
+          for (let i = sData.length - 1; i >= 1; i--) { 
+              let rowName = cleanStr(sData[i][3]).replace(/\s+/g, '').toLowerCase();
+              let rowStatus = cleanStr(sData[i][6]);
+              
+              if (rowName.includes(tName) && rowStatus !== "จัดส่งแล้ว") {
+                  let orderId = cleanStr(sData[i][1]);
+                  
+                  // อัปเดต Shop DB (สถานะ = จัดส่งแล้ว, คอลัมน์ J = เลขพัสดุ)
+                  shopSheet.getRange(i + 1, 7).setValue("จัดส่งแล้ว"); 
+                  shopSheet.getRange(i + 1, 10).setValue("'" + tNum);  
+
+                  // อัปเดต Main DB (ให้ลูกค้าเห็นใน Dashboard)
+                  for (let j = oData.length - 1; j >= 1; j--) {
+                      if (cleanStr(oData[j][1]) === orderId) {
+                          orderSheet.getRange(j + 1, 10).setValue("'" + tNum); 
+                          break;
+                      }
+                  }
+                  updatedCount++;
+                  break; 
+              }
+          }
+      }
+      logSecurity("Admin", "SAVE_TRACKING", "ผูกเลขพัสดุและอัปเดตสถานะอัตโนมัติ " + updatedCount + " รายการ");
+      return outputJson({status: 'success', updated: updatedCount});
+    }
     
     // --- 💰 หมวดแจ้งยอดโอน & แต้ม ---
     else if (action === 'submitOrder') {
-      const sheet = ss.getSheetByName("Orders"); const set = ss.getSheetByName("Settings").getDataRange().getValues();
+      const sheet = ss.getSheetByName("Orders");
+      const set = ss.getSheetByName("Settings").getDataRange().getValues();
       let base = 100, rate = 10;
       for(let i=1; i<set.length; i++) { if(set[i][0]=='amount_base') base=parseFloat(set[i][1]); if(set[i][0]=='points_rate') rate=parseFloat(set[i][1]); }
       
       const orderId = cleanStr(body.orderId);
       if (orderId !== 'เงินสด') {
         const orderData = sheet.getDataRange().getDisplayValues();
-        for (let k = 1; k < orderData.length; k++) {
-          if (cleanStr(orderData[k][0]) === orderId) return outputJson({ status: 'error', message: 'หมายเลขคำสั่งซื้อนี้ถูกแจ้งไปแล้ว (Duplicate)' });
-        }
+        for (let k = 1; k < orderData.length; k++) { if (cleanStr(orderData[k][0]) === orderId) return outputJson({ status: 'error', message: 'หมายเลขคำสั่งซื้อนี้ถูกแจ้งไปแล้ว (Duplicate)' }); }
       }
       let earned = parseFloat(((parseFloat(body.amount)/base)*rate).toFixed(2));
       sheet.appendRow(["'" + orderId, "'" + cleanStr(body.phone), body.amount, body.channel, "Pending", earned, getNowStr(), ""]);
       return outputJson({status: 'success'});
     }
-    // --- ✅ อนุมัติแต้ม & 🛡️ ระบบ RE-CHECK ป้องกันสลิปซ้ำ/บิลปลอม ---
     else if (action === 'approveOrder') {
-      const oSheet = ss.getSheetByName("Orders"); 
+      const oSheet = ss.getSheetByName("Orders");
       const oData = oSheet.getDataRange().getDisplayValues();
       const orderId = cleanStr(body.orderId);
       
-      let targetRow = -1;
-      let orderChannel = "";
-
-      // 1. ค้นหาแถวที่แอดมินเพิ่งกดอนุมัติ
+      let targetRow = -1; let orderChannel = "";
       for (let i = 1; i < oData.length; i++) {
-        if (cleanStr(oData[i][0]) === orderId && oData[i][4] === "Pending") {
-          targetRow = i;
-          orderChannel = cleanStr(oData[i][3]);
-          break;
-        }
+        if (cleanStr(oData[i][0]) === orderId && oData[i][4] === "Pending") { targetRow = i; orderChannel = cleanStr(oData[i][3]); break; }
       }
+      if (targetRow === -1) { return outputJson({status: 'error', message: 'ไม่พบรายการที่รออนุมัติ หรืออาจถูกจัดการไปแล้ว'}); }
 
-      if (targetRow === -1) {
-          return ContentService.createTextOutput(JSON.stringify({status: 'error', message: 'ไม่พบรายการที่รออนุมัติ หรืออาจถูกจัดการไปแล้ว'})).setMimeType(ContentService.MimeType.JSON);
-      }
-
-      // 🛡️ เริ่มขั้นตอน RE-CHECK
       let isStoreFront = orderChannel.includes("หน้าร้าน");
-      let onlyNumbers = orderId.replace(/\D/g, ''); // ดึงมาเฉพาะตัวเลข
+      let onlyNumbers = orderId.replace(/\D/g, ''); 
 
-      // ถ้าไม่ใช่ "หน้าร้าน" และมีการกรอกตัวเลขเข้ามา จะต้องเช็คความถูกต้องเข้มงวด
       if (!isStoreFront && onlyNumbers.length > 0) {
-          
-          // 🛡️ กฎข้อที่ 1: ห้ามซ้ำกับบิลที่เคยอนุมัติไปแล้วในระบบสะสมแต้ม
           for (let i = 1; i < oData.length; i++) {
               if (i !== targetRow && oData[i][4] === "Approved") {
                   let pastChannel = cleanStr(oData[i][3]);
-                  // เราไม่เช็คซ้ำกับประวัติของหน้าร้านเก่าๆ เผื่อกรณีเวลาโอนตรงกัน
                   if (!pastChannel.includes("หน้าร้าน")) {
                       let pastNumbers = cleanStr(oData[i][0]).replace(/\D/g, '');
-                      if (pastNumbers === onlyNumbers) {
-                          return ContentService.createTextOutput(JSON.stringify({
-                              status: 'error', 
-                              message: `ไม่อนุมัติ! เลขอ้างอิง "${onlyNumbers}" เคยถูกใช้รับแต้มไปแล้วครับ (ป้องกันบิลซ้ำ)`
-                          })).setMimeType(ContentService.MimeType.JSON);
-                      }
+                      if (pastNumbers === onlyNumbers) { return outputJson({ status: 'error', message: `ไม่อนุมัติ! เลขอ้างอิง "${onlyNumbers}" เคยถูกใช้รับแต้มไปแล้วครับ (ป้องกันบิลซ้ำ)`}); }
                   }
               }
           }
-
-          // 🛡️ กฎข้อที่ 2: ถ้าเป็นบิลของระบบเราเอง (ตะกร้าสินค้า/แอดมินสร้าง) ต้องมีอยู่จริงในตาราง Shop_Orders
           if (orderChannel.includes("ตะกร้า") || orderChannel.includes("แอดมินสร้าง") || orderChannel.includes("เว็บไซต์")) {
-              const shopSheet = ss.getSheetByName("Shop_Orders");
+              const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
+              const shopSheet = shopSS.getSheetByName("Shop_Orders");
               const sData = shopSheet ? shopSheet.getDataRange().getDisplayValues() : [];
               let isRealShopOrder = false;
-
               for(let j = 1; j < sData.length; j++) {
                   let shopOrderNumbers = cleanStr(sData[j][1]).replace(/\D/g, '');
-                  if (shopOrderNumbers === onlyNumbers) {
-                      isRealShopOrder = true;
-                      break;
-                  }
+                  if (shopOrderNumbers === onlyNumbers) { isRealShopOrder = true; break; }
               }
-              
-              if (!isRealShopOrder) {
-                  return ContentService.createTextOutput(JSON.stringify({
-                      status: 'error', 
-                      message: `ตรวจสอบล้มเหลว! ไม่พบรหัสคำสั่งซื้อ "${onlyNumbers}" ในระบบร้านค้าของเราครับ (ระวังบิลปลอม)`
-                  })).setMimeType(ContentService.MimeType.JSON);
-              }
+              if (!isRealShopOrder) { return outputJson({ status: 'error', message: `ตรวจสอบล้มเหลว! ไม่พบรหัสคำสั่งซื้อ "${onlyNumbers}" ในระบบร้านค้าของเราครับ (ระวังบิลปลอม)`}); }
           }
       }
 
-      // ✅ ผ่านด่าน Re-check แล้ว ทำการบวกแต้มเข้ากระเป๋าลูกค้า
-      let earnedPoints = parseFloat(oData[targetRow][5] || 0); 
+      let earnedPoints = parseFloat(oData[targetRow][5] || 0);
       oSheet.getRange(targetRow + 1, 5).setValue("Approved");
       
       const uSheet = ss.getSheetByName("Users"); 
       const uData = uSheet.getDataRange().getDisplayValues();
       const userPhone = cleanStr(oData[targetRow][1]);
       let foundUser = false;
-      
       for (let j = 1; j < uData.length; j++) {
         if (cleanStr(uData[j][0]) === userPhone) {
           let currentPoints = parseFloat(uData[j][4]);
           if (isNaN(currentPoints)) currentPoints = 0;
           let newTotal = currentPoints + earnedPoints;
-          
           uSheet.getRange(j + 1, 5).setValue(newTotal); 
-          foundUser = true;
-          break;
+          foundUser = true; break;
         }
       }
-      
       logSecurity("Admin", "APPROVE_ORDER", "อนุมัติแต้ม Order: " + orderId);
-      if(!foundUser) return ContentService.createTextOutput(JSON.stringify({status: 'error', message: 'อนุมัติผ่านแต่ไม่พบบัญชีเบอร์นี้ แต้มไม่เข้า'})).setMimeType(ContentService.MimeType.JSON);
-      
-      return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
+      if(!foundUser) return outputJson({status: 'error', message: 'อนุมัติผ่านแต่ไม่พบบัญชีเบอร์นี้ แต้มไม่เข้า'});
+      return outputJson({status: 'success'});
     }
     else if (action === 'rejectOrder') { 
-      const oSheet = ss.getSheetByName("Orders"); const oData = oSheet.getDataRange().getDisplayValues(); 
+      const oSheet = ss.getSheetByName("Orders");
+      const oData = oSheet.getDataRange().getDisplayValues(); 
       for (let i = 1; i < oData.length; i++) { 
         if (cleanStr(oData[i][0]) === cleanStr(body.orderId) && oData[i][4] === "Pending") { 
-          oSheet.getRange(i + 1, 5).setValue("Rejected"); oSheet.getRange(i + 1, 8).setValue(body.remark); 
+          oSheet.getRange(i + 1, 5).setValue("Rejected");
+          oSheet.getRange(i + 1, 8).setValue(body.remark); 
           logSecurity("Admin", "REJECT_ORDER", "ปฏิเสธบิล: " + body.orderId);
-          return outputJson({status: 'success'}); 
+          return outputJson({status: 'success'});
         } 
       }
       return outputJson({status: 'error', message: 'ไม่พบรายการ'});
@@ -460,12 +351,12 @@ function doPost(e) {
 
     // --- 🎁 หมวดแลกของรางวัล ---
     else if (action === 'redeemReward') {
-      const uSheet = ss.getSheetByName("Users"); const pSheet = ss.getSheetByName("Products");
+      const uSheet = ss.getSheetByName("Users");
+      const pSheet = ss.getSheetByName("Products");
       const uData = uSheet.getDataRange().getDisplayValues(); const pData = pSheet.getDataRange().getDisplayValues();
       let pIdx = -1, req = 0;
       for(let j=1; j<pData.length; j++) { if(pData[j][0].trim() == body.productId.trim()) { pIdx = j; req = parseFloat(pData[j][2]); break; } }
       if(pIdx == -1 || parseInt(pData[pIdx][5]||0) <= 0) return outputJson({status: 'error', message: 'สินค้าหมดสต็อก'});
-      
       const uPhone = cleanStr(body.phone);
       const lock = LockService.getScriptLock(); lock.waitLock(5000);
       try {
@@ -485,7 +376,8 @@ function doPost(e) {
       return outputJson({status: 'error', message: 'ไม่พบผู้ใช้'});
     }
     else if (action === 'rejectRedeem' || action === 'userCancelRedeem') {
-      const rSheet = ss.getSheetByName("Redemptions"); const row = parseInt(body.rowIndex);
+      const rSheet = ss.getSheetByName("Redemptions");
+      const row = parseInt(body.rowIndex);
       const pts = parseFloat(rSheet.getRange(row, 3).getValue());
       const phone = cleanStr(rSheet.getRange(row, 1).getDisplayValue());
       const pId = rSheet.getRange(row, 2).getDisplayValue().trim();
@@ -493,16 +385,17 @@ function doPost(e) {
       
       rSheet.getRange(row, 5).setValue(isReject ? "Rejected" : "Cancelled");
       rSheet.getRange(row, 6).setValue(isReject ? body.remark : "ลูกค้ายกเลิกเอง (ไม่คืนแต้ม)");
-      
       if (isReject) { 
         const uSheet = ss.getSheetByName("Users"); const uData = uSheet.getDataRange().getDisplayValues();
         for (let i = 1; i < uData.length; i++) { if (cleanStr(uData[i][0]) == phone) { uSheet.getRange(i + 1, 5).setValue(parseFloat((parseFloat(uData[i][4] || 0) + pts).toFixed(2))); break; } }
       }
       if (pId.indexOf("GACHA:") === -1) {
-        const pSheet = ss.getSheetByName("Products"); const pData = pSheet.getDataRange().getDisplayValues();
+        const pSheet = ss.getSheetByName("Products");
+        const pData = pSheet.getDataRange().getDisplayValues();
         for (let j = 1; j < pData.length; j++) { if (pData[j][0].trim() == pId) { pSheet.getRange(j + 1, 6).setValue(parseInt(pData[j][5] || 0) + 1); break; } }
       } else {
-        const gSheet = ss.getSheetByName("GachaSettings"); const gData = gSheet.getDataRange().getDisplayValues();
+        const gSheet = ss.getSheetByName("GachaSettings");
+        const gData = gSheet.getDataRange().getDisplayValues();
         const gName = pId.replace("GACHA: ", "").trim();
         for (let k = 1; k < gData.length; k++) { if (gData[k][1].trim() == gName) { gSheet.getRange(k + 1, 5).setValue(parseInt(gData[k][4] || 0) + 1); break; } }
       }
@@ -512,28 +405,37 @@ function doPost(e) {
     else if (action === 'bulkUpdateRedeem') {
       const rSheet = ss.getSheetByName("Redemptions");
       for (let i = 0; i < body.rowIndices.length; i++) { rSheet.getRange(body.rowIndices[i], 5).setValue(body.status); }
-      logSecurity("Admin", "UPDATE_SHIPPING", "อัปเดตสถานะจัดส่ง");
+      logSecurity("Admin", "UPDATE_SHIPPING", "อัปเดตสถานะจัดส่งของรางวัล");
       return outputJson({status: 'success'});
     }
-    // --- 🚚 เพิ่มใหม่: อัปเดตสถานะจัดส่งสำหรับ Shop Orders ---
+    
+    // --- 🚚 อัปเดตสถานะจัดส่งที่ Shop DB ---
     else if (action === 'bulkUpdateShopOrder') {
-      const shopSheet = ss.getSheetByName("Shop_Orders");
-      for (let i = 0; i < body.rowIndices.length; i++) { 
-        shopSheet.getRange(body.rowIndices[i], 7).setValue(body.status); // อัปเดตสถานะที่คอลัมน์ G (7)
+      try {
+        const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
+        const shopSheet = shopSS.getSheetByName("Shop_Orders");
+        if(!shopSheet) return outputJson({status: 'error', message: 'ไม่พบชีต Shop_Orders'});
+        
+        for (let i = 0; i < body.rowIndices.length; i++) { 
+          shopSheet.getRange(body.rowIndices[i], 7).setValue(body.status);
+        }
+        logSecurity("Admin", "UPDATE_SHOP_SHIPPING", "อัปเดตสถานะจัดส่งสินค้าร้านค้าแมนนวล");
+        return outputJson({status: 'success'});
+      } catch(err) {
+        return outputJson({status: 'error', message: 'เชื่อมต่อ Shop DB ล้มเหลว: ' + err.message});
       }
-      logSecurity("Admin", "UPDATE_SHOP_SHIPPING", "อัปเดตสถานะจัดส่งสินค้าร้านค้า");
-      return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
     }
     else if (action === 'forfeitRedeem') {
-      const rSheet = ss.getSheetByName("Redemptions"); const row = parseInt(body.rowIndex);
+      const rSheet = ss.getSheetByName("Redemptions");
+      const row = parseInt(body.rowIndex);
       const pid = rSheet.getRange(row, 2).getDisplayValue().trim();
       rSheet.getRange(row, 5).setValue("สละสิทธิ์"); rSheet.getRange(row, 6).setValue("เกิน 48 ชม. (ยึดแต้ม)");
-      
       if (pid.indexOf("GACHA:") === -1) {
         const pS = ss.getSheetByName("Products"); const pD = pS.getDataRange().getDisplayValues();
         for (let j = 1; j < pD.length; j++) { if (pD[j][0].trim() == pid) { pS.getRange(j+1, 6).setValue(parseInt(pD[j][5] || 0) + 1); break; } }
       } else {
-        const gS = ss.getSheetByName("GachaSettings"); const gD = gS.getDataRange().getDisplayValues();
+        const gS = ss.getSheetByName("GachaSettings");
+        const gD = gS.getDataRange().getDisplayValues();
         const gN = pid.replace("GACHA: ", "").trim();
         for (let k = 1; k < gD.length; k++) { if (gD[k][1].trim() == gN) { gS.getRange(k+1, 5).setValue(parseInt(gD[k][4] || 0) + 1); break; } }
       }
@@ -556,14 +458,14 @@ function doPost(e) {
       for (let i = 1; i < uData.length; i++) { if (cleanStr(uData[i][0]) === cleanStr(body.phone)) { uIdx = i; currPts = parseFloat(uData[i][4] || 0); break; } }
       
       if (uIdx === -1) return outputJson({status: 'error', message: 'ไม่พบผู้ใช้'});
-      
       const lock = LockService.getScriptLock(); lock.waitLock(8000);
       try {
         currPts = parseFloat(uSheet.getRange(uIdx+1, 5).getValue());
         if (currPts < totalCost) return outputJson({status: 'error', message: 'แต้มไม่พอ'});
         
         let remain = currPts - totalCost;
-        const gSheet = ss.getSheetByName("GachaSettings"); const gData = gSheet.getDataRange().getValues();
+        const gSheet = ss.getSheetByName("GachaSettings");
+        const gData = gSheet.getDataRange().getValues();
         
         let pool = []; let pityItemIndex = -1;
         for (let i = 1; i < gData.length; i++) {
@@ -574,12 +476,13 @@ function doPost(e) {
         }
         
         if (pool.length === 0) return outputJson({status: 'error', message: 'ตู้กาชาว่างเปล่า'});
-        
         let totalRate = pool.reduce((sum, item) => sum + item.rate, 0);
-        let results = []; let totalPointsWon = 0; let wonProducts = []; let notifications = [];
+        let results = []; let totalPointsWon = 0;
+        let wonProducts = []; let notifications = [];
         
         for (let s = 0; s < spins; s++) {
-          let wonItem = null; let isPityDrop = false;
+          let wonItem = null;
+          let isPityDrop = false;
           
           if (pityItemIndex !== -1) {
             let pItem = gData[pityItemIndex];
@@ -596,7 +499,8 @@ function doPost(e) {
           }
           
           if (!wonItem) {
-            let rand = Math.random() * totalRate; let accum = 0;
+            let rand = Math.random() * totalRate;
+            let accum = 0;
             for (let item of pool) { accum += item.rate; if (rand <= accum) { wonItem = item; break; } }
             if(!wonItem) wonItem = pool[0];
           }
@@ -607,14 +511,10 @@ function doPost(e) {
           } else {
             gSheet.getRange(wonItem.index+1, 5).setValue(parseInt(wonItem.stock) - 1);
             wonItem.stock -= 1;
-            if (wonItem.stock <= 0) {
-              pool = pool.filter(p => p.index !== wonItem.index);
-              totalRate = pool.reduce((sum, item) => sum + item.rate, 0);
-            }
+            if (wonItem.stock <= 0) { pool = pool.filter(p => p.index !== wonItem.index); totalRate = pool.reduce((sum, item) => sum + item.rate, 0); }
             ss.getSheetByName("Redemptions").appendRow(["'" + cleanStr(body.phone), "GACHA: " + wonItem.name, price, getNowStr(), "Pending", isPityDrop ? "สุ่มได้จาก Pity (การันตี)" : "สุ่มได้ปกติ"]);
             wonProducts.push(wonItem);
             results.push(wonItem);
-            
             let hideName = cleanStr(body.phone).substring(0,6) + "xxxx";
             let notiMsg = isPityDrop ? `🔥 ยินดีด้วย! คุณ ${hideName} แตกการันตี ได้รับรถ ${wonItem.name}` : `🎉 ยินดีด้วย! คุณ ${hideName} สุ่มได้รับ ${wonItem.name}`;
             ss.getSheetByName("Notifications").appendRow([getNowStr(), notiMsg]);
@@ -624,172 +524,161 @@ function doPost(e) {
         remain += totalPointsWon;
         uSheet.getRange(uIdx+1, 5).setValue(remain);
         
-        if (isMulti) {
-          return outputJson({status: 'success', remainPoints: remain, results: results, totalPointsWon: totalPointsWon, wonProducts: wonProducts});
-        } else {
-          let w = results[0];
-          let msg = w.type === 'Points' ? `คุณได้รับโบนัส ${w.value} แต้ม คืนเข้ากระเป๋า` : `กรุณาแคปหน้าจอแล้วทัก LINE เพื่อรับรถ ${w.name}`;
-          return outputJson({status: 'success', remainPoints: remain, wonItem: w, prizeType: w.type, message: msg});
-        }
+        if (isMulti) { return outputJson({status: 'success', remainPoints: remain, results: results, totalPointsWon: totalPointsWon, wonProducts: wonProducts}); } 
+        else { let w = results[0]; let msg = w.type === 'Points' ? `คุณได้รับโบนัส ${w.value} แต้ม คืนเข้ากระเป๋า` : `กรุณาแคปหน้าจอแล้วทัก LINE เพื่อรับรถ ${w.name}`; return outputJson({status: 'success', remainPoints: remain, wonItem: w, prizeType: w.type, message: msg}); }
       } finally { lock.releaseLock(); }
     }
 
-    // --- ⚙️ หมวดตั้งค่า & อื่นๆ ---
-    // ✅ อัปเกรดเป็นแบบ Dynamic: รองรับการบันทึกแยกส่วน และเพิ่ม Key ใหม่ๆ ได้ไม่จำกัด
     else if (action === 'saveSettings') {
       const sSheet = ss.getSheetByName("Settings") || ss.insertSheet("Settings");
       if (sSheet.getLastRow() === 0) sSheet.appendRow(["Key", "Value"]); 
-      
-      const incomingSettings = body.settings; // รับข้อมูลก้อนที่ส่งมาจาก saveSettingsPart
+      const incomingSettings = body.settings;
       const keys = Object.keys(incomingSettings);
       const data = sSheet.getDataRange().getValues();
-      
       keys.forEach(k => {
           let found = false;
-          // วนลูปหาว่ามี Key นี้อยู่ในชีตหรือยัง
           for (let i = 1; i < data.length; i++) {
-              if (data[i][0] === k) {
-                  sSheet.getRange(i + 1, 2).setValue(incomingSettings[k]); // ถ้ามีแล้ว ให้อัปเดตค่า
-                  found = true;
-                  break;
-              }
+              if (data[i][0] === k) { sSheet.getRange(i + 1, 2).setValue(incomingSettings[k]); found = true; break; }
           }
-          if (!found) {
-              sSheet.appendRow([k, incomingSettings[k]]); // ถ้ายังไม่มี ให้เพิ่มแถวใหม่
-          }
+          if (!found) sSheet.appendRow([k, incomingSettings[k]]);
       });
-      
       logSecurity("Admin", "UPDATE_SETTINGS", "อัปเดตการตั้งค่าระบบแยกส่วน");
-      return outputJson({status: 'success'}); // ใช้ helper outputJson ตามโครงสร้างไฟล์เดิมของคุณลูกค้า
+      return outputJson({status: 'success'}); 
     }
     else if (action === 'addProduct' || action === 'editProduct' || action === 'deleteProduct' || action === 'addGacha' || action === 'editGacha' || action === 'deleteGacha') {
        let sht = action.includes('Product') ? ss.getSheetByName("Products") : ss.getSheetByName("GachaSettings");
-       
        if (action.includes('add')) {
          let newId = action.includes('Product') ? "R" + new Date().getTime() : "G" + new Date().getTime();
          if(action.includes('Product')) sht.appendRow([newId, body.name, body.pointsReq, body.imageBase64, body.desc, body.stock]);
          else sht.appendRow([newId, body.name, body.type, body.value, body.stock, body.rate, body.imageBase64 || body.autoImageUrl, body.isPity, body.pityCount, 0, body.category]);
          logSecurity("Admin", action.toUpperCase(), "เพิ่มรายการใหม่: " + body.name);
-         
        } else if (action.includes('edit')) {
          let r = parseInt(body.rowIndex);
          if(action.includes('Product')) { sht.getRange(r, 2).setValue(body.name); sht.getRange(r, 3).setValue(body.pointsReq); sht.getRange(r, 5).setValue(body.desc); sht.getRange(r, 6).setValue(body.stock); if(body.imageBase64) sht.getRange(r, 4).setValue(body.imageBase64); }
          else { sht.getRange(r, 2).setValue(body.name); sht.getRange(r, 3).setValue(body.type); sht.getRange(r, 4).setValue(body.value); sht.getRange(r, 5).setValue(body.stock); sht.getRange(r, 6).setValue(body.rate); sht.getRange(r, 8).setValue(body.isPity); sht.getRange(r, 9).setValue(body.pityCount); sht.getRange(r, 11).setValue(body.category); if(body.imageBase64 || body.autoImageUrl) sht.getRange(r, 7).setValue(body.imageBase64 || body.autoImageUrl); }
          logSecurity("Admin", action.toUpperCase(), "แก้ไขรายการ");
-         
        } else if (action.includes('delete')) {
-         // 💡 FIX: ค้นหา ID ที่ตรงกันเป๊ะๆ แล้วลบแถวนั้นทิ้ง (ป้องกันปัญหา parseInt NaN)
          let targetId = body.id;
          let data = sht.getDataRange().getValues();
          let found = false;
-         
-         for(let i = 1; i < data.length; i++) {
-             if(data[i][0] == targetId) {
-                 sht.deleteRow(i + 1);
-                 found = true;
-                 break;
-             }
-         }
-         
-         // เผื่อกรณีที่ระบบส่งมาเป็นตัวเลขแถว (Row Index)
-         if(!found && !isNaN(parseInt(targetId))) {
-             sht.deleteRow(parseInt(targetId)); 
-         }
-         
+         for(let i = 1; i < data.length; i++) { if(data[i][0] == targetId) { sht.deleteRow(i + 1); found = true; break; } }
+         if(!found && !isNaN(parseInt(targetId))) { sht.deleteRow(parseInt(targetId)); }
          logSecurity("Admin", action.toUpperCase(), "ลบรายการ ID: " + body.id);
        }
-       return ContentService.createTextOutput(JSON.stringify({status: 'success'})).setMimeType(ContentService.MimeType.JSON);
+       return outputJson({status: 'success'});
+    }
+
+    else if (action === 'getShopProductsForAdmin') {
+      try {
+        const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
+        const sheet = shopSS.getSheetByName("Products");
+        if (!sheet) return outputJson({status: 'error', message: 'ไม่พบชีต Products ใน Shop DB'});
+        
+        const data = sheet.getDataRange().getDisplayValues();
+        let products = [];
+        for(let i = 1; i < data.length; i++) {
+            products.push({ id: data[i][0], sku: data[i][1], name: data[i][2], price: parseFloat((data[i][4] || 0).toString().replace(/,/g, '')), stock: parseInt((data[i][6] || 0).toString().replace(/,/g, '')) });
+        }
+        return outputJson({status: 'success', data: products});
+      } catch(err) { return outputJson({status: 'error', message: 'Error Shop DB: ' + err.message}); }
+    }
+
+    else if (action === 'createManualOrder') {
+      try {
+        const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
+        const shopSheet = shopSS.getSheetByName("Shop_Orders") || shopSS.insertSheet("Shop_Orders");
+        const pSheet = shopSS.getSheetByName("Products");
+        if (!pSheet) return outputJson({status: 'error', message: 'ไม่พบชีต Products ใน Shop DB'});
+        const pData = pSheet.getDataRange().getValues();
+        
+        const orderSheet = ss.getSheetByName("Orders");
+        const uSheet = ss.getSheetByName("Users");
+        const uData = uSheet.getDataRange().getValues();
+
+        const phone = cleanStr(body.phone);
+        const items = body.items || [];
+        const payMethod = body.payMethod || 'เงินสด/โอนตรง';
+        const shippingFee = parseFloat(body.shipping) || 0;
+        const discount = parseFloat(body.discount) || 0;
+
+        let name = "ลูกค้าทั่วไป";
+        let foundUser = false;
+        for(let i = 1; i < uData.length; i++) { if(cleanStr(uData[i][0]) === phone) { name = uData[i][1]; foundUser = true; break; } }
+        if(!foundUser) return outputJson({status: 'error', message: 'ไม่พบเบอร์ลูกค้าในระบบ'});
+        if(items.length === 0) return outputJson({status: 'error', message: 'ยังไม่ได้เลือกสินค้า'});
+
+        let totalPrice = 0; let receiptItems = []; let updates = [];
+        const lock = LockService.getScriptLock(); lock.waitLock(10000);
+        try {
+          for (let item of items) {
+            let pRow = -1; let currentStock = 0; let price = 0; let prodName = ""; let sku = "";
+            for (let i = 1; i < pData.length; i++) {
+              if (pData[i][0] == item.id) {
+                pRow = i + 1; sku = pData[i][1]; prodName = pData[i][2];
+                price = parseFloat((pData[i][4] || 0).toString().replace(/,/g, '')); currentStock = parseInt((pData[i][6] || 0).toString().replace(/,/g, '')); break;
+              }
+            }
+            if (pRow === -1) throw new Error("ไม่พบสินค้า ID: " + item.id);
+            if (currentStock < item.qty) throw new Error(`สต็อก ${prodName} ไม่พอ (เหลือ ${currentStock})`);
+            
+            let subtotal = price * item.qty; totalPrice += subtotal;
+            receiptItems.push({ id: item.id, sku: sku, name: prodName, qty: item.qty, price: price, subtotal: subtotal });
+            updates.push({ row: pRow, newStock: currentStock - item.qty });
+          }
+
+          updates.forEach(u => pSheet.getRange(u.row, 7).setValue(u.newStock));
+          let finalPrice = totalPrice + shippingFee - discount; if(finalPrice < 0) finalPrice = 0;
+
+          let orderDetailText = receiptItems.map(i => i.name + " (x" + i.qty + ")").join("\n") + `\n\n📦 [แอดมินสร้าง - ${payMethod}] ค่าส่ง: ฿${shippingFee} ส่วนลด: ฿${discount}`;
+          const orderId = new Date().getTime().toString();
+          const rawJson = JSON.stringify(receiptItems);
+
+          shopSheet.appendRow([ new Date(), "'" + orderId, "'" + phone, name, orderDetailText, finalPrice, "รอจัดส่ง", rawJson, "" ]);
+          orderSheet.appendRow([ Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss"), "'" + orderId, name, "'" + phone, "🛒 แอดมินสร้าง", finalPrice, 0, "Approved", orderDetailText ]);
+
+          logSecurity("Admin", "MANUAL_ORDER", "แอดมินสร้างออเดอร์ให้เบอร์: " + phone);
+          return outputJson({ status: "success", orderId: orderId });
+        } catch (err) { return outputJson({ status: "error", message: err.message }); } finally { lock.releaseLock(); }
+      } catch(e) { return outputJson({status: 'error', message: 'Main -> Shop Connect Error: ' + e.message}); }
     }
     
-    // =========================================
-    // 📦 AI สแกนเลขพัสดุจากรูปภาพ (อัปเกรด: แสดง Error จริง & กันเหนียวตัวแปร)
-    // =========================================
     else if (action === 'analyzeTrackingImage' || (typeof data !== 'undefined' && data.action === 'analyzeTrackingImage')) {
       try {
-          // 💡 กันเหนียว! รองรับตัวแปรทั้งชื่อ data และ body ป้องกัน error หาค่าไม่เจอ
           const payloadData = typeof data !== 'undefined' ? data : (typeof body !== 'undefined' ? body : {});
           const base64Data = payloadData.imageBase64 || payloadData.image;
-          
-          if (!base64Data) {
-              return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "ส่งรูปภาพไม่สำเร็จ (ข้อมูลภาพว่างเปล่า)" })).setMimeType(ContentService.MimeType.JSON);
-          }
+          if (!base64Data) return outputJson({ status: "error", message: "ส่งรูปภาพไม่สำเร็จ" });
 
           const prompt = `ทำหน้าที่เป็นผู้ช่วยสกัดข้อมูลเลขพัสดุจากรูปภาพใบเสร็จส่งของ
           ให้ดึง 'ชื่อลูกค้า' (เอาแค่ชื่อสั้นๆ ไม่ต้องเอาคำนำหน้ายาวๆ) และ 'เลขพัสดุ (Tracking Number)' 
-          ตอบกลับเป็น JSON Array Format เท่านั้น ตัวอย่างเช่น:
-          [
-              {"name": "สมชาย", "tracking": "ED123456789TH"},
-              {"name": "มาลี", "tracking": "TH9876543210"}
-          ]
+          ตอบกลับเป็น JSON Array Format เท่านั้น ตัวอย่างเช่น: [{"name": "สมชาย", "tracking": "ED123456789TH"}]
           ถ้าไม่พบข้อมูลเลยให้ตอบ []`;
           
-          // 💡 ใช้ API Key สำรอง หรือของระบบหลัก
           const API_KEY = typeof GEMINI_API_KEY !== 'undefined' ? GEMINI_API_KEY : "AIzaSyCY6HHWGB_VBWTH4sno3Ri_kROq7x61Ejk"; 
-          
-          const payload = {
-              "contents": [{
-                  "parts": [
-                      {"text": prompt},
-                      {"inline_data": {"mime_type": "image/jpeg", "data": base64Data}}
-                  ]
-              }],
-              "generationConfig": { "response_mime_type": "application/json" }
-          };
-          
+          const payload = { "contents": [{ "parts": [ {"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": base64Data}} ] }], "generationConfig": { "response_mime_type": "application/json" } };
           const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
-          const options = {
-              "method": "post",
-              "contentType": "application/json",
-              "payload": JSON.stringify(payload),
-              "muteHttpExceptions": true // 💡 ให้คืนค่า Error กลับมา ไม่พังกลางคัน
-          };
+          const options = { "method": "post", "contentType": "application/json", "payload": JSON.stringify(payload), "muteHttpExceptions": true };
           
           const response = UrlFetchApp.fetch(url, options);
           const responseCode = response.getResponseCode();
           const json = JSON.parse(response.getContentText());
           
           if (responseCode === 200 && json.candidates && json.candidates.length > 0) {
-              let text = json.candidates[0].content.parts[0].text;
-              text = text.replace(/```json/g, '').replace(/```/g, '').trim();
-              let parsedData = JSON.parse(text);
-              
+              let text = json.candidates[0].content.parts[0].text; text = text.replace(/```json/g, '').replace(/```/g, '').trim(); let parsedData = JSON.parse(text);
               if(typeof logSecurity === 'function') logSecurity("Admin", "SCAN_TRACKING", `สแกนเลขพัสดุ AI พบ ${parsedData.length} รายการ`);
-              
-              return ContentService.createTextOutput(JSON.stringify({ status: "success", data: parsedData })).setMimeType(ContentService.MimeType.JSON);
+              return outputJson({ status: "success", data: parsedData });
           } else {
-              // 🚨 คาย Error จริงๆ จาก Google ออกมาให้เห็นชัดๆ จะได้รู้ว่าบั๊กที่อะไร
-              let errorMsg = json.error ? json.error.message : "ไม่มีการตอบกลับจาก AI";
-              return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "Google AI Error: " + errorMsg })).setMimeType(ContentService.MimeType.JSON);
+              return outputJson({ status: "error", message: "Google AI Error: " + (json.error ? json.error.message : "No Response") });
           }
-      } catch (err) {
-          return ContentService.createTextOutput(JSON.stringify({ status: "error", message: "เกิดข้อผิดพลาดในระบบ: " + err.message })).setMimeType(ContentService.MimeType.JSON);
-      }
+      } catch (err) { return outputJson({ status: "error", message: "Error: " + err.message }); }
     }
     
-    return outputJson({status: 'error', message: 'ไม่พบ Action'});
-  } catch (e) { 
-    return outputJson({status: 'error', message: 'Backend Error: ' + e.message}); 
-  }
+    return outputJson({status: 'error', message: 'ไม่พบ Action หรือคำสั่งไม่ถูกต้อง'});
+  } catch (e) { return outputJson({status: 'error', message: 'Backend Error: ' + e.message}); }
 }
 
-// ==========================================
-// 4. สคริปต์อัตโนมัติ (Triggers)
-// ==========================================
 function monthlyFixedResetPoints() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const uSheet = ss.getSheetByName("Users");
-  const uData = uSheet.getDataRange().getValues(); 
-  let resetCount = 0;
-  for (let i = 1; i < uData.length; i++) {
-    if (uData[i][6] !== 'admin' && parseFloat(uData[i][4]) > 0) {
-      uSheet.getRange(i + 1, 5).setValue(0);
-      resetCount++;
-    }
-  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet(); const uSheet = ss.getSheetByName("Users"); const uData = uSheet.getDataRange().getValues(); let resetCount = 0;
+  for (let i = 1; i < uData.length; i++) { if (uData[i][6] !== 'admin' && parseFloat(uData[i][4]) > 0) { uSheet.getRange(i + 1, 5).setValue(0); resetCount++; } }
   logSecurity("SYSTEM", "MONTHLY_RESET", "ล้างแต้มทั้งหมด " + resetCount + " บัญชี");
 }
-
-function forceAuth() {
-  // ฟังก์ชันนี้มีไว้เพื่อหลอกให้ Google Apps Script เด้งหน้าต่างขอสิทธิ์ออกอินเทอร์เน็ตค่ะ
-  UrlFetchApp.fetch("https://www.google.com");
-}
+function forceAuth() { UrlFetchApp.fetch("https://www.google.com"); }
