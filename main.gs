@@ -1,9 +1,8 @@
 // ==========================================
 // ⚙️ ระบบหลังบ้าน: ฐานข้อมูลหลัก (Main DB - Full System)
-// เชื่อมต่อ Shop DB อัตโนมัติ (ID: 1uMgp7uSYbNozVLW0-KQAcxPivaDlnrlY59xdgzf_VzI)
 // ==========================================
 
-const GEMINI_API_KEY = "AIzaSyAEg1qob83v9rYglYyOXuqQAfjDt6VRetc"; 
+// 🚨 ลบการ Hardcode API Key ออกแล้ว เปลี่ยนไปดึงจาก Script Properties แทน
 const SHOP_DB_ID = "1uMgp7uSYbNozVLW0-KQAcxPivaDlnrlY59xdgzf_VzI"; 
 
 function getNowStr() { return Utilities.formatDate(new Date(), "Asia/Bangkok", "dd/MM/yyyy HH:mm:ss"); }
@@ -64,7 +63,6 @@ function doGet(e) {
       }
       result = { status: 'success', data: orders };
     }
-    // 🚚 อัปเกรด: ดึงเลขพัสดุ (Tracking) จาก Shop DB กลับมาด้วย
     else if (action === 'getShopOrders') {
       try {
         const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
@@ -122,7 +120,6 @@ function doPost(e) {
     const action = body.action;
     const ss = SpreadsheetApp.getActiveSpreadsheet();
 
-    // 📱 อัปเกรด: ส่งเลขพัสดุกลับไปให้ลูกค้าโชว์หน้า Dashboard
     if (action === 'getUserHistory') {
       const ph = cleanStr(body.phone);
       const oSheet = ss.getSheetByName("Orders"); const oData = oSheet ? oSheet.getDataRange().getDisplayValues() : [];
@@ -218,7 +215,6 @@ function doPost(e) {
       return outputJson({status: 'success'});
     }
 
-    // 📦 พระเอกของงาน! บันทึกเลขพัสดุและจับคู่ออเดอร์อัตโนมัติ
     else if (action === 'saveTrackingNumbers') {
       const trackingList = body.trackingData; 
       const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
@@ -230,11 +226,9 @@ function doPost(e) {
       let updatedCount = 0;
 
       for (let track of trackingList) {
-          // ตัดคำขยะเพื่อให้การค้นหาแม่นยำขึ้น
           let tName = cleanStr(track.name).replace(/คุณ|พี่|น้อง|นาย|นางสาว|นาง/g, '').replace(/\s+/g, '').toLowerCase();
           let tNum = cleanStr(track.tracking);
 
-          // หาบิลใน Shop_Orders (ค้นจากล่างขึ้นบน เพื่อเจอบิลใหม่ล่าสุดก่อน)
           for (let i = sData.length - 1; i >= 1; i--) { 
               let rowName = cleanStr(sData[i][3]).replace(/\s+/g, '').toLowerCase();
               let rowStatus = cleanStr(sData[i][6]);
@@ -242,11 +236,9 @@ function doPost(e) {
               if (rowName.includes(tName) && rowStatus !== "จัดส่งแล้ว") {
                   let orderId = cleanStr(sData[i][1]);
                   
-                  // อัปเดต Shop DB (สถานะ = จัดส่งแล้ว, คอลัมน์ J = เลขพัสดุ)
                   shopSheet.getRange(i + 1, 7).setValue("จัดส่งแล้ว"); 
                   shopSheet.getRange(i + 1, 10).setValue("'" + tNum);  
 
-                  // อัปเดต Main DB (ให้ลูกค้าเห็นใน Dashboard)
                   for (let j = oData.length - 1; j >= 1; j--) {
                       if (cleanStr(oData[j][1]) === orderId) {
                           orderSheet.getRange(j + 1, 10).setValue("'" + tNum); 
@@ -262,7 +254,6 @@ function doPost(e) {
       return outputJson({status: 'success', updated: updatedCount});
     }
     
-    // --- 💰 หมวดแจ้งยอดโอน & แต้ม ---
     else if (action === 'submitOrder') {
       const sheet = ss.getSheetByName("Orders");
       const set = ss.getSheetByName("Settings").getDataRange().getValues();
@@ -349,7 +340,6 @@ function doPost(e) {
       return outputJson({status: 'error', message: 'ไม่พบรายการ'});
     }
 
-    // --- 🎁 หมวดแลกของรางวัล ---
     else if (action === 'redeemReward') {
       const uSheet = ss.getSheetByName("Users");
       const pSheet = ss.getSheetByName("Products");
@@ -409,7 +399,6 @@ function doPost(e) {
       return outputJson({status: 'success'});
     }
     
-    // --- 🚚 อัปเดตสถานะจัดส่งที่ Shop DB ---
     else if (action === 'bulkUpdateShopOrder') {
       try {
         const shopSS = SpreadsheetApp.openById(SHOP_DB_ID);
@@ -443,7 +432,6 @@ function doPost(e) {
       return outputJson({status: 'success'});
     }
 
-    // --- 🎲 หมวดสุ่มกาชา ---
     else if (action === 'spinGacha' || action === 'spinGacha10') {
       const isMulti = (action === 'spinGacha10');
       const spins = isMulti ? 10 : 1;
@@ -642,6 +630,7 @@ function doPost(e) {
       } catch(e) { return outputJson({status: 'error', message: 'Main -> Shop Connect Error: ' + e.message}); }
     }
     
+    // 🚨 ซ่อน API Key ไว้ใน Script Properties หลังบ้านแทนการ Hardcode
     else if (action === 'analyzeTrackingImage' || (typeof data !== 'undefined' && data.action === 'analyzeTrackingImage')) {
       try {
           const payloadData = typeof data !== 'undefined' ? data : (typeof body !== 'undefined' ? body : {});
@@ -653,7 +642,12 @@ function doPost(e) {
           ตอบกลับเป็น JSON Array Format เท่านั้น ตัวอย่างเช่น: [{"name": "สมชาย", "tracking": "ED123456789TH"}]
           ถ้าไม่พบข้อมูลเลยให้ตอบ []`;
           
-          const API_KEY = typeof GEMINI_API_KEY !== 'undefined' ? GEMINI_API_KEY : "AIzaSyCY6HHWGB_VBWTH4sno3Ri_kROq7x61Ejk"; 
+          // 💡 ดึงค่า API Key จากตู้เซฟ Google Apps Script Properties
+          const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+          if (!API_KEY) {
+              return outputJson({ status: "error", message: "Google AI Error: ยังไม่ได้ตั้งค่า GEMINI_API_KEY ใน Script Properties หลังบ้าน" });
+          }
+
           const payload = { "contents": [{ "parts": [ {"text": prompt}, {"inline_data": {"mime_type": "image/jpeg", "data": base64Data}} ] }], "generationConfig": { "response_mime_type": "application/json" } };
           const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`;
           const options = { "method": "post", "contentType": "application/json", "payload": JSON.stringify(payload), "muteHttpExceptions": true };

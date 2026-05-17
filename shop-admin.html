@@ -13,7 +13,7 @@
         body { 
             font-family: 'Kanit', sans-serif; 
             background-color: #f4f7fb; 
-            padding-bottom: 80px; /* เว้นที่ว่างด้านล่างไม่ให้เนื้อหาโดนเมนูบัง */
+            padding-bottom: 80px; 
         }
         .product-img-td { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; }
         .pagination .page-link { border-radius: 10px; margin: 0 2px; font-weight: bold; color: #333; }
@@ -21,44 +21,19 @@
 
         /* 📱 เมนูด้านล่าง (Bottom Navigation) */
         .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: #ffffff;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 10px 0 15px 0;
-            z-index: 1050;
-            border-top-left-radius: 20px;
-            border-top-right-radius: 20px;
+            position: fixed; bottom: 0; left: 0; right: 0; background-color: #ffffff;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05); display: flex; justify-content: space-around;
+            align-items: center; padding: 10px 0 15px 0; z-index: 1050;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
         }
         .bottom-nav-item {
-            text-decoration: none;
-            color: #6c757d;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 0.75rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            padding: 5px 10px;
-            border-radius: 15px;
+            text-decoration: none; color: #6c757d; display: flex; flex-direction: column;
+            align-items: center; font-size: 0.75rem; font-weight: 600; transition: all 0.3s ease;
+            padding: 5px 10px; border-radius: 15px;
         }
-        .bottom-nav-item i {
-            font-size: 1.4rem;
-            margin-bottom: 4px;
-        }
-        .bottom-nav-item:hover, .bottom-nav-item.active {
-            color: #0dcaf0; /* สีฟ้า Info ให้เข้ากับธีม AI */
-            background-color: rgba(13, 202, 240, 0.1);
-        }
-        .bottom-nav-item.danger:hover {
-            color: #dc3545;
-            background-color: rgba(220, 53, 69, 0.1);
-        }
+        .bottom-nav-item i { font-size: 1.4rem; margin-bottom: 4px; }
+        .bottom-nav-item:hover, .bottom-nav-item.active { color: #0dcaf0; background-color: rgba(13, 202, 240, 0.1); }
+        .bottom-nav-item.danger:hover { color: #dc3545; background-color: rgba(220, 53, 69, 0.1); }
     </style>
 </head>
 <body>
@@ -142,10 +117,20 @@
             <div class="col-lg-8">
                 <div class="card shadow-sm border-0 rounded-4 mb-4">
                     <div class="card-body p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="fw-bold mb-0"><i class="fas fa-list text-primary me-2"></i> คลังสินค้าในระบบ</h4>
-                            <div class="text-muted small">แสดงผลหน้าละ 10 รายการ</div>
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+                            <div>
+                                <h4 class="fw-bold mb-0"><i class="fas fa-list text-primary me-2"></i> คลังสินค้าในระบบ</h4>
+                                <div class="text-muted small mt-1">แสดงผลหน้าละ 10 รายการ</div>
+                            </div>
+                            
+                            <div class="input-group shadow-sm" style="max-width: 350px;">
+                                <span class="input-group-text bg-white border-primary text-primary border-end-0">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="shopProductSearch" class="form-control border-primary border-start-0 ps-0" placeholder="ค้นหา ชื่อ, SKU, หมวดหมู่..." onkeyup="searchShopProducts()">
+                            </div>
                         </div>
+
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
                                 <thead class="table-dark">
@@ -173,22 +158,10 @@
     </div>
 
     <div class="bottom-nav">
-        <a href="index.html" class="bottom-nav-item">
-            <i class="fas fa-store"></i>
-            <span>ร้านค้า</span>
-        </a>
-        <a href="shop-admin.html" class="bottom-nav-item active">
-            <i class="fas fa-camera-retro"></i>
-            <span>SHOP AI</span>
-        </a>
-        <a href="admin.html" class="bottom-nav-item">
-            <i class="fas fa-cog"></i>
-            <span>หน้าแอดมิน</span>
-        </a>
-        <a href="#" onclick="logoutApp()" class="bottom-nav-item danger text-secondary">
-            <i class="fas fa-sign-out-alt"></i>
-            <span>ออกระบบ</span>
-        </a>
+        <a href="index.html" class="bottom-nav-item"><i class="fas fa-store"></i><span>ร้านค้า</span></a>
+        <a href="shop-admin.html" class="bottom-nav-item active"><i class="fas fa-camera-retro"></i><span>SHOP AI</span></a>
+        <a href="admin.html" class="bottom-nav-item"><i class="fas fa-cog"></i><span>หน้าแอดมิน</span></a>
+        <a href="#" onclick="logoutApp()" class="bottom-nav-item danger text-secondary"><i class="fas fa-sign-out-alt"></i><span>ออกระบบ</span></a>
     </div>
 
     <div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">

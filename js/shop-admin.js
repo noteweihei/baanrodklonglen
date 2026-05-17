@@ -1,12 +1,13 @@
 // ==========================================
 // 🛒 Module: Shop Admin (AI Scanner, CRUD & Pagination)
-// ฉบับสมบูรณ์: เพิ่มระบบ "ตัวเลือกสินค้า (Variants)"
+// ฉบับสมบูรณ์: เพิ่มระบบตัวเลือกสินค้า + ระบบค้นหาอัจฉริยะ
 // ==========================================
 
 let videoStream = null;
 let isEditMode = false; 
 let currentEditId = null; 
 let allProducts = []; 
+let filteredProducts = []; // 💡 ตัวแปรใหม่สำหรับเก็บผลการค้นหา
 let scannedImageBase64 = null; 
 
 let currentShopPage = 1;
@@ -100,7 +101,6 @@ window.captureAndAnalyze = async function() {
             
             document.getElementById('imagePreview').src = imageData;
             document.getElementById('imagePreviewContainer').classList.remove('d-none');
-            
             scannedImageBase64 = imageData; 
             
             bootstrap.Modal.getInstance(document.getElementById('cameraModal'))?.hide();
@@ -109,14 +109,13 @@ window.captureAndAnalyze = async function() {
     } catch (e) { Swal.fire('Error', e.message, 'error'); }
 }
 
-// 💾 3. บันทึกข้อมูลสินค้า (เพิ่มตัวเลือกสินค้า Variants)
+// 💾 3. บันทึกข้อมูลสินค้า
 window.saveProductData = async function(e) {
     e.preventDefault();
     const btn = document.getElementById('saveBtn');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังบันทึก...';
     btn.disabled = true;
     
-    // 💡 เช็คก่อนว่าใน HTML มีช่อง pVariants ไหม ถ้าไม่มีให้ส่งค่าว่าง
     const variantsInput = document.getElementById('pVariants');
     const variantsValue = variantsInput ? variantsInput.value : "";
     
@@ -130,7 +129,7 @@ window.saveProductData = async function(e) {
         wholesale_price: document.getElementById('pWholesalePrice').value, 
         stock: document.getElementById('pStock').value,
         desc: document.getElementById('pDesc').value, 
-        variants: variantsValue, // 💡 ส่งข้อมูลตัวเลือกลงไปที่หลังบ้าน
+        variants: variantsValue,
         image: scannedImageBase64 
     };
     
@@ -138,39 +137,60 @@ window.saveProductData = async function(e) {
     if (res.status === 'success') {
         Swal.fire('สำเร็จ', 'อัปเดตข้อมูลเรียบร้อย', 'success');
         window.resetForm();
-        window.loadProducts();
+        window.loadProducts(); // โหลดใหม่และรีเซ็ตการค้นหาด้วย
     } else { Swal.fire('ผิดพลาด', res.message, 'error'); }
     btn.disabled = false;
 }
 
-// 📋 4. ระบบแสดงสินค้า
+// 📋 4. ระบบแสดงสินค้า + 🔍 ค้นหาอัจฉริยะ
 window.loadProducts = async function() {
     const res = await API.shopGet("getProducts");
     if (res.status === 'success') { 
         allProducts = res.data.reverse(); 
+        filteredProducts = [...allProducts]; // 💡 เริ่มต้นให้รายการกรอง = รายการทั้งหมด
         window.renderShopTable(); 
     }
+}
+
+// 🔍 ฟังก์ชันกรองข้อมูลเมื่อพิมพ์ในช่องค้นหา
+window.searchShopProducts = function() {
+    const input = document.getElementById('shopProductSearch');
+    if (!input) return;
+    
+    const keyword = input.value.toLowerCase().trim();
+    
+    if (keyword === '') {
+        filteredProducts = [...allProducts]; // คืนค่าทั้งหมดถ้าไม่ได้พิมพ์อะไร
+    } else {
+        filteredProducts = allProducts.filter(p => 
+            (p.name && p.name.toLowerCase().includes(keyword)) ||
+            (p.sku && p.sku.toLowerCase().includes(keyword)) ||
+            (p.category && p.category.toLowerCase().includes(keyword))
+        );
+    }
+    
+    currentShopPage = 1; // เมื่อค้นหา ให้เด้งกลับไปหน้า 1 เสมอ
+    window.renderShopTable();
 }
 
 window.renderShopTable = function() {
     const tbody = document.getElementById("productTableBody");
     if (!tbody) return;
     
-    if (allProducts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">ยังไม่มีสินค้าในระบบ</td></tr>';
+    // 💡 เปลี่ยนมาใช้ filteredProducts แทน allProducts
+    if (filteredProducts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted"><i class="fas fa-box-open fs-4 d-block mb-2"></i> ไม่พบสินค้าที่คุณค้นหา</td></tr>';
         document.getElementById("paginationContainer").innerHTML = '';
         return;
     }
 
     const startIndex = (currentShopPage - 1) * shopItemsPerPage;
     const endIndex = startIndex + shopItemsPerPage;
-    const paginatedItems = allProducts.slice(startIndex, endIndex);
+    const paginatedItems = filteredProducts.slice(startIndex, endIndex); // 💡 ใช้รายการที่กรองแล้วมาแบ่งหน้า
 
     let html = '';
     paginatedItems.forEach(p => {
         let imgTag = p.image ? `<img src="${p.image}" class="product-img-td shadow-sm">` : '<span class="badge bg-secondary">No Img</span>';
-        
-        // 💡 ถ้าสินค้านี้มีตัวเลือก ให้โชว์ป้ายสีเหลืองแจ้งให้แอดมินทราบ
         let variantBadge = p.variants && p.variants.trim() !== "" ? `<br><span class="badge bg-warning text-dark mt-1" style="font-size:0.65rem;">มีตัวเลือก</span>` : "";
 
         html += `
@@ -182,13 +202,13 @@ window.renderShopTable = function() {
             <td class="text-success fw-bold">฿${p.retail_price}</td>
             <td class="text-primary fw-bold">${p.stock}</td>
             <td class="text-center">
-                <button class="btn btn-sm btn-warning mb-1" onclick="editProduct('${p.id}')"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-sm btn-danger mb-1" onclick="deleteProduct('${p.id}')"><i class="fas fa-trash-alt"></i></button>
+                <button class="btn btn-sm btn-warning mb-1 shadow-sm" onclick="editProduct('${p.id}')"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger mb-1 shadow-sm" onclick="deleteProduct('${p.id}')"><i class="fas fa-trash-alt"></i></button>
             </td>
         </tr>`;
     });
     tbody.innerHTML = html;
-    window.renderPagination(allProducts.length);
+    window.renderPagination(filteredProducts.length); // 💡 ส่งจำนวนรายการที่ผ่านการกรองไปคำนวณหน้า
 }
 
 window.renderPagination = function(totalItems) {
@@ -220,6 +240,7 @@ window.changeShopPage = function(page) {
 
 // ✏️ 5. เปิดโหมดแก้ไข
 window.editProduct = function(id) {
+    // ค้นหาจาก allProducts เหมือนเดิม เพราะคือฐานข้อมูลตัวเต็ม
     const p = allProducts.find(x => x.id === id);
     if (!p) return;
     
@@ -234,7 +255,6 @@ window.editProduct = function(id) {
     document.getElementById('pStock').value = p.stock;
     document.getElementById('pDesc').value = p.desc;
     
-    // 💡 ดึงค่าตัวเลือกกลับมาโชว์ในช่อง input (เพื่อแก้ไขต่อ)
     if (document.getElementById('pVariants')) {
         document.getElementById('pVariants').value = p.variants || "";
     }
@@ -269,9 +289,12 @@ window.resetForm = function() {
     document.getElementById('imagePreview').src = '';
     document.getElementById('imagePreviewContainer').classList.add('d-none');
     
-    // 💡 เคลียร์ช่องตัวเลือกสินค้า
-    if (document.getElementById('pVariants')) {
-        document.getElementById('pVariants').value = "";
+    if (document.getElementById('pVariants')) document.getElementById('pVariants').value = "";
+    
+    // 💡 รีเซ็ตช่องค้นหากลับเป็นค่าว่างด้วย
+    if (document.getElementById('shopProductSearch')) {
+        document.getElementById('shopProductSearch').value = '';
+        window.searchShopProducts(); // สั่งให้ตารางกลับมาแสดงทั้งหมด
     }
     
     window.loadDynamicCategories();
